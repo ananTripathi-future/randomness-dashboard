@@ -339,7 +339,7 @@ export default function NISTTests() {
         bitsToTest = fileStats.fullBits;
       }
       if (bitsToTest.length >= 10) {
-        const jsRes = runFullNISTJS(bitsToTest, alpha, selectedTests);
+        const jsRes = runFullNISTJS(bitsToTest, Number(alpha), selectedTests, Number(numSequences));
         setNistResults(jsRes);
       } else {
         alert('NIST Test Execution Failed: ' + (err.response?.data?.detail || err.message));

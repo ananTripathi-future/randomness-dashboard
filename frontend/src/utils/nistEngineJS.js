@@ -493,52 +493,89 @@ export function randomExcursionsJS(bitStr) {
   return igamc(0.5, chiSq / 2.0);
 }
 
-export function runFullNISTJS(bitStr, alpha = 0.01, selectedTests = null) {
+export function runFullNISTJS(bitStr, alpha = 0.01, selectedTests = null, numSequences = 1) {
+  const nTotal = bitStr.length;
+  const numSeqNum = Number(numSequences) || 1;
+  const seqLen = numSeqNum > 0 ? Math.floor(nTotal / numSeqNum) : nTotal;
+  const sCount = (seqLen >= 50 && numSeqNum > 0) ? numSeqNum : 1;
+
+  // Split into s sub-sequences
+  const subSequences = [];
+  for (let i = 0; i < sCount; i++) {
+    subSequences.push(bitStr.substring(i * seqLen, (i + 1) * seqLen));
+  }
+
   const testDefs = [
-    { name: "Frequency (Monobit)", fn: () => monobitFrequencyJS(bitStr) },
-    { name: "Block Frequency", fn: () => blockFrequencyJS(bitStr, 128) },
-    { name: "Cumulative Sums (Forward)", fn: () => cumulativeSumsJS(bitStr, 'forward') },
-    { name: "Cumulative Sums (Reverse)", fn: () => cumulativeSumsJS(bitStr, 'reverse') },
-    { name: "Runs", fn: () => runsJS(bitStr) },
-    { name: "Longest Run of Ones", fn: () => longestRunOnesJS(bitStr) },
-    { name: "Binary Matrix Rank", fn: () => binaryMatrixRankJS(bitStr) },
-    { name: "Discrete Fourier Transform (FFT)", fn: () => discreteFourierTransformJS(bitStr) },
-    { name: "Non-Overlapping Template Matching", fn: () => nonOverlappingTemplateJS(bitStr, "000000001", 9) },
-    { name: "Overlapping Template Matching", fn: () => overlappingTemplateJS(bitStr, 9) },
-    { name: "Maurer's Universal Statistical", fn: () => maurersUniversalJS(bitStr, 7, 1280) },
-    { name: "Approximate Entropy", fn: () => approximateEntropyJS(bitStr, 10) },
-    { name: "Random Excursions", fn: () => randomExcursionsJS(bitStr) },
-    { name: "Random Excursions Variant", fn: () => randomExcursionsJS(bitStr) },
-    { name: "Serial (Test 1)", fn: () => serialTestJS(bitStr, 16)[0] },
-    { name: "Serial (Test 2)", fn: () => serialTestJS(bitStr, 16)[1] },
-    { name: "Linear Complexity", fn: () => linearComplexityJS(bitStr, 500) }
+    { name: "Frequency (Monobit)", fn: monobitFrequencyJS },
+    { name: "Block Frequency", fn: (s) => blockFrequencyJS(s, 128) },
+    { name: "Cumulative Sums (Forward)", fn: (s) => cumulativeSumsJS(s, 'forward') },
+    { name: "Cumulative Sums (Reverse)", fn: (s) => cumulativeSumsJS(s, 'reverse') },
+    { name: "Runs", fn: runsJS },
+    { name: "Longest Run of Ones", fn: longestRunOnesJS },
+    { name: "Binary Matrix Rank", fn: binaryMatrixRankJS },
+    { name: "Discrete Fourier Transform (FFT)", fn: discreteFourierTransformJS },
+    { name: "Non-Overlapping Template Matching", fn: (s) => nonOverlappingTemplateJS(s, "000000001", 9) },
+    { name: "Overlapping Template Matching", fn: (s) => overlappingTemplateJS(s, 9) },
+    { name: "Maurer's Universal Statistical", fn: (s) => maurersUniversalJS(s, 7, 1280) },
+    { name: "Approximate Entropy", fn: (s) => approximateEntropyJS(s, 10) },
+    { name: "Random Excursions", fn: randomExcursionsJS },
+    { name: "Random Excursions Variant", fn: randomExcursionsJS },
+    { name: "Serial (Test 1)", fn: (s) => serialTestJS(s, 16)[0] },
+    { name: "Serial (Test 2)", fn: (s) => serialTestJS(s, 16)[1] },
+    { name: "Linear Complexity", fn: (s) => linearComplexityJS(s, 500) }
   ];
+
+  const minPassProp = sCount > 1 
+    ? Math.max(0.0, (1.0 - alpha) - 3.0 * Math.sqrt(alpha * (1.0 - alpha) / sCount))
+    : 1.0;
 
   const results = [];
   let passedCount = 0;
 
   for (const test of testDefs) {
     if (selectedTests && !selectedTests.includes(test.name)) continue;
-    
-    let pVal = 0.0;
-    try {
-      pVal = test.fn();
-      if (isNaN(pVal)) pVal = 0.5;
-    } catch (e) {
-      pVal = 0.0;
+
+    const pVals = [];
+    for (const seq of subSequences) {
+      try {
+        let p = test.fn(seq);
+        if (isNaN(p)) p = 0.5;
+        pVals.push(p);
+      } catch (e) {
+        pVals.push(0.0);
+      }
     }
 
-    const status = pVal >= alpha ? "PASS" : "FAIL";
+    const passes = pVals.filter(p => p >= alpha);
+    const passRatio = passes.length / sCount;
+
+    // Chi-square test for P-value uniformity over 10 bins
+    const bins = Array(10).fill(0);
+    pVals.forEach(p => {
+      const idx = Math.min(9, Math.floor(p * 10));
+      bins[idx]++;
+    });
+
+    const expFreq = sCount / 10.0;
+    const chiSq = bins.reduce((acc, b) => acc + Math.pow(b - expFreq, 2) / expFreq, 0);
+    const pUniformity = sCount > 1 ? igamc(9 / 2.0, chiSq / 2.0) : pVals[0];
+
+    const status = sCount > 1 
+      ? (passRatio >= minPassProp && pUniformity >= 0.0001 ? "PASS" : "FAIL")
+      : (pVals[0] >= alpha ? "PASS" : "FAIL");
+
     if (status === "PASS") passedCount++;
+
+    const avgPVal = pVals.reduce((a, b) => a + b, 0) / pVals.length;
 
     results.push({
       name: test.name,
-      p_value: parseFloat(pVal.toFixed(6)),
-      p_uniformity: parseFloat(pVal.toFixed(4)),
-      pass_ratio: status === "PASS" ? 1.0 : 0.0,
-      bin_counts: Array.from({ length: 10 }, (_, i) => (Math.min(9, Math.floor(pVal * 10)) === i ? 1 : 0)),
+      p_value: parseFloat(avgPVal.toFixed(6)),
+      p_uniformity: parseFloat(pUniformity.toFixed(4)),
+      pass_ratio: parseFloat(passRatio.toFixed(4)),
+      bin_counts: bins,
       status,
-      description: `Client-Side JS Engine evaluation for ${test.name}.`
+      description: `Evaluated across ${sCount} sequence(s) of length ${seqLen} bits.`
     });
   }
 
@@ -549,8 +586,8 @@ export function runFullNISTJS(bitStr, alpha = 0.01, selectedTests = null) {
     execution_mode: "CLIENT_JS_ENGINE",
     reference_notice: "CLIENT-SIDE WEB JS EXECUTION: Running live directly inside your browser via client-side NIST engine.",
     alpha,
-    num_sequences: 1,
-    sequence_length: bitStr.length,
+    num_sequences: sCount,
+    sequence_length: nTotal,
     total_tests: total,
     passed: passedCount,
     failed: total - passedCount,
