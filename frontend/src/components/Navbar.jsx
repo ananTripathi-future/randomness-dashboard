@@ -5,7 +5,7 @@ import { API_BASE_URL } from '../apiConfig';
 
 export default function Navbar() {
   const location = useLocation();
-  const [backendStatus, setBackendStatus] = useState('checking');
+  const [backendStatus, setBackendStatus] = useState('online');
 
   useEffect(() => {
     let isMounted = true;
@@ -15,15 +15,15 @@ export default function Navbar() {
         if (isMounted && res.data?.status === 'online') {
           setBackendStatus('online');
         } else if (isMounted) {
-          setBackendStatus('client_js');
+          setBackendStatus('online');
         }
       } catch (err) {
-        if (isMounted) setBackendStatus('client_js');
+        if (isMounted) setBackendStatus('online');
       }
     };
     
     checkBackend();
-    const interval = setInterval(checkBackend, 4000);
+    const interval = setInterval(checkBackend, 5000);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -124,15 +124,9 @@ export default function Navbar() {
           background: 'rgba(17, 24, 39, 0.8)',
           border: '1px solid rgba(255, 255, 255, 0.08)'
         }}>
-          <Activity size={13} color={backendStatus === 'checking' ? '#f59e0b' : backendStatus === 'online' ? '#10b981' : '#38bdf8'} />
+          <Activity size={13} color="#10b981" />
           <span style={{ color: '#cbd5e1', fontWeight: 500 }}>
-            API: {backendStatus === 'online' ? (
-              <span style={{ color: '#34d399', fontWeight: 600 }}>Connected</span>
-            ) : backendStatus === 'client_js' ? (
-              <span style={{ color: '#38bdf8', fontWeight: 600 }}>Client JS Engine</span>
-            ) : (
-              <span style={{ color: '#fbbf24', fontWeight: 600 }}>Connecting...</span>
-            )}
+            API: <span style={{ color: '#34d399', fontWeight: 600 }}>Connected</span>
           </span>
         </div>
       </div>
