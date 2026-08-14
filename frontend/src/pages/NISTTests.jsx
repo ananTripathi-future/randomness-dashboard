@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { TestTube, Upload, Play, RefreshCw, FileText, CheckCircle, ShieldAlert, Cpu, CheckSquare, Square, Layers, Info } from 'lucide-react';
+import { TestTube, Upload, Play, RefreshCw, FileText, CheckCircle, ShieldAlert, XCircle, Cpu, CheckSquare, Square, Layers, Info } from 'lucide-react';
 import TestTable from '../components/TestTable';
 import { PassFailDonutChart, PValueBarChart } from '../components/Charts';
 
