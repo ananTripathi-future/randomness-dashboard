@@ -6,6 +6,8 @@ import { PassFailDonutChart, PValueBarChart } from '../components/Charts';
 
 import { API_BASE_URL } from '../apiConfig';
 import { runFullNISTJS } from '../utils/nistEngineJS';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ALL_NIST_TEST_NAMES = [
   "Frequency (Monobit)",
@@ -44,119 +46,158 @@ export default function NISTTests() {
   const handleDownloadPDF = () => {
     if (!nistResults) return;
 
-    const printWindow = window.open('', '_blank');
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
     const dateStr = new Date().toLocaleString();
 
-    const testRows = nistResults.tests.map((t, idx) => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${idx + 1}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${t.name}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-family: monospace;">${t.p_value}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-family: monospace;">${t.p_uniformity !== undefined ? t.p_uniformity : '-'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">
-          <span style="padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px; color: ${t.status === 'PASS' ? '#047857' : t.status === 'FAIL' ? '#b91c1c' : '#374151'}; background: ${t.status === 'PASS' ? '#d1fae5' : t.status === 'FAIL' ? '#fee2e2' : '#f3f4f6'};">
-            ${t.status}
-          </span>
-        </td>
-      </tr>
-    `).join('');
+    // Header Banner
+    doc.setFillColor(2, 132, 199);
+    doc.rect(0, 0, 210, 24, 'F');
 
-    const failedSections = nistResults.tests.filter(t => t.status === 'FAIL').map((t) => {
-      const info = getFailureExplanation(t.name, t.p_value, alpha);
-      return `
-        <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 14px; border-radius: 8px; margin-bottom: 12px;">
-          <div style="font-weight: 700; color: #991b1b; font-size: 14px;">❌ ${t.name} (P-value: ${t.p_value} < Threshold α=${alpha})</div>
-          <div style="font-size: 12px; color: #374151; margin-top: 6px;"><strong>Why It Failed:</strong> ${info.why}</div>
-          <div style="font-size: 12px; color: #1e3a8a; margin-top: 4px;"><strong>Recommended Fix:</strong> ${info.remediation}</div>
-        </div>
-      `;
-    }).join('');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(15);
+    doc.setFont('helvetica', 'bold');
+    doc.text("NIST SP 800-22 REV 1A EVALUATION REPORT", 105, 12, { align: "center" });
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>NIST SP 800-22 Evaluation Report</title>
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 35px; color: #0f172a; line-height: 1.5; }
-          .header { text-align: center; border-bottom: 3px solid #0284c7; padding-bottom: 15px; margin-bottom: 25px; }
-          .title { font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
-          .meta { font-size: 12px; color: #64748b; margin-top: 4px; }
-          .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; text-align: center; }
-          .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 10px; }
-          .summary-title { font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 600; }
-          .summary-val { font-size: 22px; font-weight: 800; margin-top: 4px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 13px; }
-          th { background: #0f172a; color: #ffffff; padding: 12px 10px; text-align: left; font-weight: 600; }
-          @media print {
-            .no-print { display: none !important; }
-            body { padding: 0; }
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${dateStr} | Mode: ${nistResults.execution_mode}`, 105, 18, { align: "center" });
+
+    // Metadata Section
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Evaluation Parameters:", 14, 32);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`• Sequence Length (n): ${nistResults.sequence_length?.toLocaleString() || 0} bits`, 14, 38);
+    doc.text(`• Sub-Sequences (s): ${nistResults.num_sequences || 1}`, 14, 43);
+    doc.text(`• Significance Level (alpha): ${alpha}`, 120, 38);
+    doc.text(`• Target Source: ${nistResults.tests?.[0]?.description || 'Uploaded Bitstream'}`, 120, 43);
+
+    // KPI Summary Boxes
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, 48, 42, 18, 2, 2, 'F');
+    doc.roundedRect(61, 48, 42, 18, 2, 2, 'F');
+    doc.roundedRect(108, 48, 42, 18, 2, 2, 'F');
+    doc.roundedRect(155, 48, 41, 18, 2, 2, 'F');
+
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text("TOTAL TESTS", 35, 53, { align: "center" });
+    doc.text("PASSED", 82, 53, { align: "center" });
+    doc.text("FAILED", 129, 53, { align: "center" });
+    doc.text("PASS RATE", 175, 53, { align: "center" });
+
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${nistResults.total_tests}`, 35, 61, { align: "center" });
+    doc.setTextColor(5, 150, 105);
+    doc.text(`${nistResults.passed}`, 82, 61, { align: "center" });
+    doc.setTextColor(220, 38, 38);
+    doc.text(`${nistResults.failed}`, 129, 61, { align: "center" });
+    doc.setTextColor(nistResults.pass_rate >= 90 ? 5 : 220, nistResults.pass_rate >= 90 ? 150 : 38, nistResults.pass_rate >= 90 ? 105 : 38);
+    doc.text(`${nistResults.pass_rate}%`, 175, 61, { align: "center" });
+
+    // Test Results Table
+    const tableData = nistResults.tests.map((t, idx) => [
+      idx + 1,
+      t.name,
+      t.p_value,
+      t.p_uniformity !== undefined ? t.p_uniformity : '-',
+      t.status
+    ]);
+
+    autoTable(doc, {
+      startY: 71,
+      head: [['#', 'NIST Statistical Test Name', 'P-Value', 'P-Uniformity', 'Status']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 12 },
+        1: { cellWidth: 80 },
+        2: { halign: 'center', cellWidth: 30, font: 'courier' },
+        3: { halign: 'center', cellWidth: 32, font: 'courier' },
+        4: { halign: 'center', cellWidth: 28, fontStyle: 'bold' }
+      },
+      didParseCell: function (data) {
+        if (data.section === 'body' && data.column.index === 4) {
+          if (data.cell.raw === 'PASS') {
+            data.cell.styles.textColor = [5, 150, 105];
+          } else if (data.cell.raw === 'FAIL') {
+            data.cell.styles.textColor = [220, 38, 38];
+          } else {
+            data.cell.styles.textColor = [100, 116, 139];
           }
-        </style>
-      </head>
-      <body>
-        <div class="no-print" style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; padding: 14px 20px; border-radius: 10px; border: 1px solid #bae6fd;">
-          <div style="font-weight: 600; color: #0369a1; font-size: 14px;">📄 NIST SP 800-22 Evaluation Report Ready</div>
-          <button onclick="window.print()" style="padding: 10px 22px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
-            🖨️ Save as PDF / Print
-          </button>
-        </div>
+        }
+      }
+    });
 
-        <div class="header">
-          <div class="title">NIST SP 800-22 REV 1A STATISTICAL EVALUATION REPORT</div>
-          <div class="meta">Report Generated: ${dateStr} | Execution Mode: ${nistResults.execution_mode}</div>
-          <div class="meta">Sequence Length: ${nistResults.sequence_length?.toLocaleString()} bits | Sequences: s = ${nistResults.num_sequences || 1} | Significance Level α = ${alpha}</div>
-        </div>
+    // Automated Failure Diagnosis Section
+    let finalY = doc.lastAutoTable.finalY + 10;
 
-        <div class="summary-grid">
-          <div class="summary-card">
-            <div class="summary-title">Total Tests Evaluated</div>
-            <div class="summary-val" style="color: #0f172a;">${nistResults.total_tests}</div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-title">Passed Tests</div>
-            <div class="summary-val" style="color: #059669;">${nistResults.passed}</div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-title">Failed Tests</div>
-            <div class="summary-val" style="color: #dc2626;">${nistResults.failed}</div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-title">Overall Pass Rate</div>
-            <div class="summary-val" style="color: ${nistResults.pass_rate >= 90 ? '#059669' : '#dc2626'};">${nistResults.pass_rate}%</div>
-          </div>
-        </div>
+    if (nistResults.failed > 0) {
+      if (finalY > 240) {
+        doc.addPage();
+        finalY = 20;
+      }
 
-        <h3 style="font-size: 16px; color: #0f172a; margin-bottom: 12px;">NIST Test Suites Evaluation Breakdown</h3>
-        <table>
-          <thead>
-            <tr>
-              <th style="text-align: center; width: 40px;">#</th>
-              <th>NIST Statistical Test Name</th>
-              <th style="text-align: center;">P-Value</th>
-              <th style="text-align: center;">P-Uniformity</th>
-              <th style="text-align: center;">Status Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${testRows}
-          </tbody>
-        </table>
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(220, 38, 38);
+      doc.text(`Automated Failure Diagnosis (${nistResults.failed} Failed Tests):`, 14, finalY);
 
-        ${nistResults.failed > 0 ? `
-          <h3 style="font-size: 16px; color: #dc2626; margin-bottom: 12px;">Automated File Failure Diagnosis & Remediation Breakdown</h3>
-          ${failedSections}
-        ` : `
-          <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 18px; border-radius: 8px; color: #065f46; font-size: 13px; font-weight: 500;">
-            <strong>✔ 100% PASS VERDICT:</strong> The tested sequence bit distribution shows no statistically significant evidence against the NIST SP 800-22 uniform randomness null hypothesis at significance level α = ${alpha}.
-          </div>
-        `}
-      </body>
-      </html>
-    `;
+      finalY += 6;
+      nistResults.tests.filter(t => t.status === 'FAIL').forEach((t) => {
+        if (finalY > 265) {
+          doc.addPage();
+          finalY = 20;
+        }
+        const info = getFailureExplanation(t.name, t.p_value, alpha);
+        
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(185, 28, 28);
+        doc.text(`• ${t.name} (P-value: ${t.p_value})`, 14, finalY);
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+        const whyLines = doc.splitTextToSize(`Why it failed: ${info.why}`, 175);
+        doc.text(whyLines, 18, finalY + 4);
+        finalY += 4 + whyLines.length * 4;
+
+        doc.setTextColor(3, 105, 161);
+        const fixLines = doc.splitTextToSize(`Fix / Action: ${info.remediation}`, 175);
+        doc.text(fixLines, 18, finalY);
+        finalY += fixLines.length * 4 + 4;
+      });
+    } else {
+      if (finalY > 260) {
+        doc.addPage();
+        finalY = 20;
+      }
+      doc.setFillColor(236, 253, 245);
+      doc.roundedRect(14, finalY, 182, 14, 2, 2, 'F');
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(6, 95, 70);
+      doc.text("VERDICT: 100% PASS - Bit sequence distribution adheres to NIST SP 800-22 uniform randomness.", 18, finalY + 9);
+    }
+
+    // Trigger Direct Save PDF Download
+    doc.save('NIST_SP800_22_Evaluation_Report.pdf');
   };
 
   // Handle Preset changes
