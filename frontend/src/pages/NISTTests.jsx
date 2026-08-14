@@ -5,6 +5,7 @@ import TestTable from '../components/TestTable';
 import { PassFailDonutChart, PValueBarChart } from '../components/Charts';
 
 import { API_BASE_URL } from '../apiConfig';
+import { runFullNISTJS } from '../utils/nistEngineJS';
 
 const ALL_NIST_TEST_NAMES = [
   "Frequency (Monobit)",
@@ -129,6 +130,7 @@ export default function NISTTests() {
           setLoading(false);
           return;
         }
+
         const res = await axios.post(`${API_BASE_URL}/api/nist/run`, {
           bit_str: manualBits,
           alpha: Number(alpha),
@@ -140,7 +142,17 @@ export default function NISTTests() {
         setNistResults(res.data);
       }
     } catch (err) {
-      alert('NIST Test Execution Failed: ' + (err.response?.data?.detail || err.message));
+      console.warn("Backend API unavailable, executing client-side JS NIST engine fallback:", err.message);
+      let bitsToTest = manualBits.replace(/[^01]/g, '');
+      if (activeTab === 'upload' && fileStats) {
+        bitsToTest = fileStats.previewText.replace(/[^01]/g, '');
+      }
+      if (bitsToTest.length >= 10) {
+        const jsRes = runFullNISTJS(bitsToTest, alpha, selectedTests);
+        setNistResults(jsRes);
+      } else {
+        alert('NIST Test Execution Failed: ' + (err.response?.data?.detail || err.message));
+      }
     } finally {
       setLoading(false);
     }
