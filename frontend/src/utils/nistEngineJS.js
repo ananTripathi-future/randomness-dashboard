@@ -259,6 +259,67 @@ export function discreteFourierTransformJS(bitStr) {
   return erfc(Math.abs(d) / Math.sqrt(2));
 }
 
+export function approximateEntropyJS(bitStr, m = 10) {
+  const n = Math.min(bitStr.length, 100000);
+  if (n < Math.pow(2, m)) {
+    m = Math.max(2, Math.floor(Math.log2(n)) - 2);
+  }
+
+  function phi(blockLen) {
+    const extended = bitStr + bitStr.substring(0, blockLen - 1);
+    const counts = new Map();
+    for (let i = 0; i < n; i++) {
+      const pat = extended.substring(i, i + blockLen);
+      counts.set(pat, (counts.get(pat) || 0) + 1);
+    }
+    let sumP = 0.0;
+    for (const cnt of counts.values()) {
+      const p = cnt / n;
+      sumP += p * Math.log(p);
+    }
+    return sumP;
+  }
+
+  const phiM = phi(m);
+  const phiM1 = phi(m + 1);
+  const apEn = phiM - phiM1;
+  const chiSq = 2.0 * n * (Math.log(2) - apEn);
+  return igamc(Math.pow(2, m - 1), chiSq / 2.0);
+}
+
+export function serialTestJS(bitStr, m = 16) {
+  const n = Math.min(bitStr.length, 100000);
+  if (n < Math.pow(2, m)) {
+    m = Math.max(2, Math.floor(Math.log2(n)) - 3);
+  }
+
+  function psiSq(blockLen) {
+    if (blockLen === 0) return 0.0;
+    const extended = bitStr + bitStr.substring(0, blockLen - 1);
+    const counts = new Map();
+    for (let i = 0; i < n; i++) {
+      const pat = extended.substring(i, i + blockLen);
+      counts.set(pat, (counts.get(pat) || 0) + 1);
+    }
+    let sumSq = 0;
+    for (const cnt of counts.values()) {
+      sumSq += cnt * cnt;
+    }
+    return (Math.pow(2, blockLen) / n) * sumSq - n;
+  }
+
+  const psim = psiSq(m);
+  const psim1 = psiSq(m - 1);
+  const psim2 = psiSq(m - 2);
+
+  const d1 = psim - psim1;
+  const d2 = psim - 2 * psim1 + psim2;
+
+  const p1 = igamc(Math.pow(2, m - 2), d1 / 2.0);
+  const p2 = igamc(Math.pow(2, m - 3), d2 / 2.0);
+  return [p1, p2];
+}
+
 export function berlekampMasseyJS(block) {
   const n = block.length;
   let b = new Array(n).fill(0);
@@ -318,6 +379,120 @@ export function linearComplexityJS(bitStr, blockSize = 500) {
   return igamc(3.0, chiSq / 2.0);
 }
 
+export function nonOverlappingTemplateJS(bitStr, template = "000000001", m = 9) {
+  const n = Math.min(bitStr.length, 500000);
+  const numBlocks = 8;
+  const blockSize = Math.floor(n / numBlocks);
+  if (blockSize < m) return 0.0;
+
+  const w = new Array(numBlocks).fill(0);
+  for (let i = 0; i < numBlocks; i++) {
+    const block = bitStr.substring(i * blockSize, (i + 1) * blockSize);
+    let pos = 0;
+    while (pos <= block.length - m) {
+      if (block.substring(pos, pos + m) === template) {
+        w[i]++;
+        pos += m;
+      } else {
+        pos++;
+      }
+    }
+  }
+
+  const mu = (blockSize - m + 1) / Math.pow(2, m);
+  const varVal = blockSize * ((1.0 / Math.pow(2, m)) - ((2 * m - 1) / Math.pow(2, 2 * m)));
+  const sigmaSq = varVal > 0 ? varVal : 1.0;
+
+  let chiSq = 0.0;
+  for (let i = 0; i < numBlocks; i++) {
+    chiSq += Math.pow(w[i] - mu, 2) / sigmaSq;
+  }
+  return igamc(numBlocks / 2.0, chiSq / 2.0);
+}
+
+export function overlappingTemplateJS(bitStr, m = 9) {
+  const n = Math.min(bitStr.length, 500000);
+  const numBlocks = 500;
+  const blockSize = 1032;
+  const actualBlocks = Math.max(1, Math.min(numBlocks, Math.floor(n / blockSize)));
+
+  const template = "1".repeat(m);
+  const pi = [0.364091, 0.185659, 0.139381, 0.100571, 0.0704323, 0.139865];
+  const counts = new Array(6).fill(0);
+
+  for (let i = 0; i < actualBlocks; i++) {
+    const block = bitStr.substring(i * blockSize, (i + 1) * blockSize);
+    let cnt = 0;
+    for (let j = 0; j <= block.length - m; j++) {
+      if (block.substring(j, j + m) === template) cnt++;
+    }
+    if (cnt <= 0) counts[0]++;
+    else if (cnt === 1) counts[1]++;
+    else if (cnt === 2) counts[2]++;
+    else if (cnt === 3) counts[3]++;
+    else if (cnt === 4) counts[4]++;
+    else counts[5]++;
+  }
+
+  let chiSq = 0.0;
+  for (let i = 0; i < 6; i++) {
+    const exp = actualBlocks * pi[i];
+    chiSq += Math.pow(counts[i] - exp, 2) / exp;
+  }
+  return igamc(2.5, chiSq / 2.0);
+}
+
+export function maurersUniversalJS(bitStr, L = 7, Q = 1280) {
+  const n = Math.min(bitStr.length, 500000);
+  const K = Math.floor(n / L) - Q;
+  if (K <= 0) return 0.5;
+
+  const table = new Map();
+  for (let i = 1; i <= Q; i++) {
+    const block = bitStr.substring((i - 1) * L, i * L);
+    table.set(block, i);
+  }
+
+  let sumLog = 0.0;
+  for (let i = Q + 1; i <= Q + K; i++) {
+    const block = bitStr.substring((i - 1) * L, i * L);
+    const lastPos = table.get(block) || 0;
+    const dist = i - lastPos;
+    table.set(block, i);
+    if (dist > 0) sumLog += Math.log2(dist);
+  }
+
+  const fn = sumLog / K;
+  const expectedValue = 6.0506;
+  const variance = 3.125;
+  const c = 0.7 - 0.8 / L + (4.0 + 32.0 / L) * Math.pow(K, -3.0 / L) / 15.0;
+  const sigma = c * Math.sqrt(variance / K);
+  if (sigma <= 0) return 0.5;
+
+  const val = Math.abs(fn - expectedValue) / (Math.sqrt(2.0) * sigma);
+  return erfc(val);
+}
+
+export function randomExcursionsJS(bitStr) {
+  const n = Math.min(bitStr.length, 500000);
+  if (n === 0) return 0.0;
+
+  let currentSum = 0;
+  let cycles = 0;
+  let state1Count = 0;
+
+  for (let i = 0; i < n; i++) {
+    currentSum += bitStr[i] === '1' ? 1 : -1;
+    if (currentSum === 0) cycles++;
+    if (currentSum === 1) state1Count++;
+  }
+
+  if (cycles === 0) return 1.0;
+  const pi = 0.5;
+  const chiSq = Math.pow(state1Count - cycles * pi, 2) / (cycles * pi);
+  return igamc(0.5, chiSq / 2.0);
+}
+
 export function runFullNISTJS(bitStr, alpha = 0.01, selectedTests = null) {
   const testDefs = [
     { name: "Frequency (Monobit)", fn: () => monobitFrequencyJS(bitStr) },
@@ -328,6 +503,13 @@ export function runFullNISTJS(bitStr, alpha = 0.01, selectedTests = null) {
     { name: "Longest Run of Ones", fn: () => longestRunOnesJS(bitStr) },
     { name: "Binary Matrix Rank", fn: () => binaryMatrixRankJS(bitStr) },
     { name: "Discrete Fourier Transform (FFT)", fn: () => discreteFourierTransformJS(bitStr) },
+    { name: "Non-Overlapping Template Matching", fn: () => nonOverlappingTemplateJS(bitStr, "000000001", 9) },
+    { name: "Overlapping Template Matching", fn: () => overlappingTemplateJS(bitStr, 9) },
+    { name: "Maurer's Universal Statistical", fn: () => maurersUniversalJS(bitStr, 7, 1280) },
+    { name: "Approximate Entropy", fn: () => approximateEntropyJS(bitStr, 10) },
+    { name: "Random Excursions", fn: () => randomExcursionsJS(bitStr) },
+    { name: "Serial (Test 1)", fn: () => serialTestJS(bitStr, 16)[0] },
+    { name: "Serial (Test 2)", fn: () => serialTestJS(bitStr, 16)[1] },
     { name: "Linear Complexity", fn: () => linearComplexityJS(bitStr, 500) }
   ];
 

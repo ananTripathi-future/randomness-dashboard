@@ -329,6 +329,112 @@ def linear_complexity_test(bit_str: str, block_size: int = 500) -> float:
     p_val = special.gammaincc(3.0, chi_sq / 2.0)
     return float(p_val)
 
+def non_overlapping_template_test(bit_str: str, template: str = "000000001", m: int = 9) -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
+    n = len(bit_str)
+    num_blocks = 8
+    block_size = n // num_blocks
+    if block_size < m:
+        return 0.0
+    
+    w = [0] * num_blocks
+    for i in range(num_blocks):
+        block = bit_str[i*block_size : (i+1)*block_size]
+        pos = 0
+        while pos <= len(block) - m:
+            if block[pos : pos + m] == template:
+                w[i] += 1
+                pos += m
+            else:
+                pos += 1
+                
+    mu = (block_size - m + 1) / (2**m)
+    var = block_size * ((1.0 / (2**m)) - ((2 * m - 1) / (2**(2*m))))
+    if var <= 0: var = 1.0
+    
+    chi_sq = sum(((w[i] - mu)**2) / var for i in range(num_blocks))
+    return float(special.gammaincc(num_blocks / 2.0, chi_sq / 2.0))
+
+def overlapping_template_test(bit_str: str, m: int = 9) -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
+    n = len(bit_str)
+    num_blocks = 500
+    block_size = 1032
+    if n < num_blocks * block_size:
+        num_blocks = max(1, n // block_size)
+    
+    template = "1" * m
+    pi = [0.364091, 0.185659, 0.139381, 0.100571, 0.0704323, 0.139865]
+    counts = [0] * 6
+    
+    for i in range(num_blocks):
+        block = bit_str[i*block_size : (i+1)*block_size]
+        cnt = 0
+        for j in range(len(block) - m + 1):
+            if block[j : j + m] == template:
+                cnt += 1
+        if cnt <= 0: counts[0] += 1
+        elif cnt == 1: counts[1] += 1
+        elif cnt == 2: counts[2] += 1
+        elif cnt == 3: counts[3] += 1
+        elif cnt == 4: counts[4] += 1
+        else: counts[5] += 1
+
+    chi_sq = sum(((counts[i] - num_blocks * pi[i])**2) / (num_blocks * pi[i]) for i in range(6))
+    return float(special.gammaincc(2.5, chi_sq / 2.0))
+
+def maurers_universal_test(bit_str: str, L: int = 7, Q: int = 1280) -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
+    n = len(bit_str)
+    K = (n // L) - Q
+    if K <= 0:
+        return 0.5
+    
+    table = {}
+    for i in range(1, Q + 1):
+        block = bit_str[(i-1)*L : i*L]
+        table[block] = i
+        
+    sum_log = 0.0
+    for i in range(Q + 1, Q + K + 1):
+        block = bit_str[(i-1)*L : i*L]
+        last_pos = table.get(block, 0)
+        dist = i - last_pos
+        table[block] = i
+        sum_log += math.log2(dist) if dist > 0 else 0
+        
+    fn = sum_log / K
+    expected_value = 6.0506
+    variance = 3.125
+    c = 0.7 - 0.8 / L + (4.0 + 32.0 / L) * (K ** (-3.0 / L)) / 15.0
+    sigma = c * math.sqrt(variance / K)
+    if sigma <= 0: return 0.5
+    
+    val = abs(fn - expected_value) / (math.sqrt(2.0) * sigma)
+    return float(special.erfc(val))
+
+def random_excursions_test(bit_str: str) -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
+    n = len(bit_str)
+    if n == 0: return 0.0
+    
+    x = np.frombuffer(bit_str.encode('ascii'), dtype=np.uint8)
+    vals = np.where(x == 49, 1, -1)
+    s = np.cumsum(vals)
+    
+    cycles = int(np.count_nonzero(s == 0))
+    if cycles == 0:
+        return 1.0
+        
+    state1_count = int(np.count_nonzero(s == 1))
+    pi = 0.5
+    chi_sq = ((state1_count - cycles * pi) ** 2) / (cycles * pi)
+    return float(special.gammaincc(0.5, chi_sq / 2.0))
+
 def compute_pvalue_uniformity(p_values: list[float]) -> tuple[float, list[int]]:
     """NIST SP 800-22 Chi-Square test for P-value uniformity over 10 bins."""
     s = len(p_values)
@@ -365,7 +471,11 @@ def run_python_fallback_nist_suite(bit_str: str, alpha: float = 0.01, num_sequen
         ("Longest Run of Ones", longest_run_ones_test),
         ("Binary Matrix Rank", lambda s: matrix_rank_test(s, 32, 32)),
         ("Discrete Fourier Transform (FFT)", dft_spectral_test),
+        ("Non-Overlapping Template Matching", lambda s: non_overlapping_template_test(s, "000000001", 9)),
+        ("Overlapping Template Matching", lambda s: overlapping_template_test(s, 9)),
+        ("Maurer's Universal Statistical", lambda s: maurers_universal_test(s, 7, 1280)),
         ("Approximate Entropy", lambda s: approximate_entropy_test(s, 10)),
+        ("Random Excursions", random_excursions_test),
         ("Serial (Test 1)", lambda s: serial_test(s, 16)[0]),
         ("Serial (Test 2)", lambda s: serial_test(s, 16)[1]),
         ("Linear Complexity", lambda s: linear_complexity_test(s, 500)),

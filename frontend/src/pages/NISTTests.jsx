@@ -16,7 +16,11 @@ const ALL_NIST_TEST_NAMES = [
   "Longest Run of Ones",
   "Binary Matrix Rank",
   "Discrete Fourier Transform (FFT)",
+  "Non-Overlapping Template Matching",
+  "Overlapping Template Matching",
+  "Maurer's Universal Statistical",
   "Approximate Entropy",
+  "Random Excursions",
   "Serial (Test 1)",
   "Serial (Test 2)",
   "Linear Complexity"
