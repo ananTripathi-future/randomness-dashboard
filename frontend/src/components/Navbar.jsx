@@ -8,21 +8,26 @@ export default function Navbar() {
   const [backendStatus, setBackendStatus] = useState('checking');
 
   useEffect(() => {
+    let isMounted = true;
     const checkBackend = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/health', { timeout: 2500 });
-        if (res.data?.status === 'online') {
+        const res = await axios.get('http://localhost:8000/api/health', { timeout: 3000 });
+        if (isMounted && res.data?.status === 'online') {
           setBackendStatus('online');
-        } else {
+        } else if (isMounted) {
           setBackendStatus('offline');
         }
       } catch (err) {
-        setBackendStatus('offline');
+        if (isMounted) setBackendStatus('offline');
       }
     };
+    
     checkBackend();
-    const interval = setInterval(checkBackend, 15000);
-    return () => clearInterval(interval);
+    const interval = setInterval(checkBackend, 4000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const navLinks = [
