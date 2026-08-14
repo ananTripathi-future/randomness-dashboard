@@ -11,14 +11,14 @@ export default function Navbar() {
     let isMounted = true;
     const checkBackend = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/api/health`, { timeout: 3000 });
+        const res = await axios.get(`${API_BASE_URL}/api/health`, { timeout: 2000 });
         if (isMounted && res.data?.status === 'online') {
           setBackendStatus('online');
         } else if (isMounted) {
-          setBackendStatus('offline');
+          setBackendStatus('client_js');
         }
       } catch (err) {
-        if (isMounted) setBackendStatus('offline');
+        if (isMounted) setBackendStatus('client_js');
       }
     };
     
@@ -124,10 +124,12 @@ export default function Navbar() {
           background: 'rgba(17, 24, 39, 0.8)',
           border: '1px solid rgba(255, 255, 255, 0.08)'
         }}>
-          <Activity size={13} color={backendStatus === 'online' ? '#10b981' : '#f59e0b'} />
+          <Activity size={13} color={backendStatus === 'checking' ? '#f59e0b' : backendStatus === 'online' ? '#10b981' : '#38bdf8'} />
           <span style={{ color: '#cbd5e1', fontWeight: 500 }}>
             API: {backendStatus === 'online' ? (
               <span style={{ color: '#34d399', fontWeight: 600 }}>Connected</span>
+            ) : backendStatus === 'client_js' ? (
+              <span style={{ color: '#38bdf8', fontWeight: 600 }}>Client JS Engine</span>
             ) : (
               <span style={{ color: '#fbbf24', fontWeight: 600 }}>Connecting...</span>
             )}
