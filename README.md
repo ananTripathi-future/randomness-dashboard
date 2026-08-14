@@ -6,9 +6,9 @@ A full-stack web application designed for random number generation (PRNG, TRNG, 
 
 ---
 
-## 🌐 Live Web Application & Vercel Dashboard
+## 🌐 Live Web Application Links
 
-- 🚀 **Live Production Application**: **[randomness-viewer.vercel.app](https://randomness-viewer.vercel.app)**
+- 🚀 **Live Vercel Application**: **[randomness-dashboard.vercel.app](https://randomness-dashboard.vercel.app/)**
 - ⚡ **Vercel Project Dashboard**: **[vercel.com/omananttripathi-6491s-projects/randomness-dashboard](https://vercel.com/omananttripathi-6491s-projects/randomness-dashboard)**
 - 📦 **GitHub Repository**: **[github.com/ananTripathi-future/randomness-dashboard](https://github.com/ananTripathi-future/randomness-dashboard)**
 
