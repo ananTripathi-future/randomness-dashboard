@@ -6,11 +6,11 @@ A full-stack web application designed for random number generation (PRNG, TRNG, 
 
 ---
 
-## 🌟 Live Demo & One-Click Deployment
+## 🌐 Live Web Application & Vercel Dashboard
 
-Deploy directly to **Vercel** with a single click so anyone on GitHub or the web can use the interactive dashboard immediately:
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FananTripathi-future%2Frandomness-dashboard)
+- 🚀 **Live Production Application**: **[randomness-viewer.vercel.app](https://randomness-viewer.vercel.app)**
+- ⚡ **Vercel Project Dashboard**: **[vercel.com/omananttripathi-6491s-projects/randomness-dashboard](https://vercel.com/omananttripathi-6491s-projects/randomness-dashboard)**
+- 📦 **GitHub Repository**: **[github.com/ananTripathi-future/randomness-dashboard](https://github.com/ananTripathi-future/randomness-dashboard)**
 
 ---
 
@@ -18,7 +18,7 @@ Deploy directly to **Vercel** with a single click so anyone on GitHub or the web
 
 - **NIST SP 800-22 Statistical Test Suite (15 Tests)**:
   - Frequency (Monobit), Block Frequency, Cumulative Sums (Forward/Reverse), Runs, Longest Run of Ones, Binary Matrix Rank GF(2), Discrete Fourier Transform (Spectral FFT), Non-Overlapping Template, Overlapping Template, Universal Statistical, Approximate Entropy, Serial (Tests 1 & 2), and Linear Complexity (Berlekamp-Massey).
-  - Primary validation via official **NIST STS C Reference binary** (`assess`), with automatic fallback to a pure Python SciPy engine.
+  - Dual Execution Engines: Primary **Python SciPy Backend** + Standalone **Client-Side Web JS Engine** for 100% cloud uptime.
   - Multi-sequence testing ($s$) with **P-value uniformity ($\chi^2$)** test over 10 bins ($p_T = \text{igamc}(9/2, \chi^2/2)$).
   - Standardized significance level **$\alpha = 0.01$**.
 
@@ -38,7 +38,7 @@ Deploy directly to **Vercel** with a single click so anyone on GitHub or the web
 
 ---
 
-## 🏗️ Architecture & Vercel Deployment Structure
+## 🏗️ Architecture & Deployment Structure
 
 ```
 randomness-dashboard/
@@ -47,6 +47,7 @@ randomness-dashboard/
 │   ├── src/
 │   │   ├── components/   # Navbar, Footer, TestTable, TestResultModal, Charts
 │   │   ├── pages/        # Home, PRNG, TRNG, QRNG, NISTTests, Compare, History, Educational
+│   │   ├── utils/        # nistEngineJS.js (Client-side JS NIST Engine)
 │   │   ├── App.jsx
 │   │   └── index.css
 │   └── package.json
