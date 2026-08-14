@@ -42,6 +42,26 @@ const TEST_DETAILS_DICTIONARY = {
     formula: "Peak count threshold d = (N1 - N0) / sqrt(n * 0.95 * 0.05 / 4).",
     interpretation: "Passing means the frequency spectrum is flat (white noise behavior). Failing reveals hidden periodicities or signals."
   },
+  "Non-Overlapping Template Matching": {
+    purpose: "Detects non-periodic target m-bit pattern frequencies in sub-blocks across the bit stream.",
+    formula: "Chi^2 = Sum((W_i - mu)^2 / sigma^2), P-value = igamc(N/2, Chi^2/2)",
+    interpretation: "Passing indicates target pattern occurrences match expected Poisson process distribution."
+  },
+  "Overlapping Template Matching": {
+    purpose: "Evaluates occurrences of overlapping m-bit target patterns (e.g. streaks of 1s) within fixed blocks.",
+    formula: "Chi^2 goodness-of-fit against theoretical sub-pattern streak probabilities.",
+    interpretation: "Passing means overlapping sub-pattern concentrations do not form artificial clusters."
+  },
+  "Maurer's Universal Statistical": {
+    purpose: "Measures sequence compressibility by evaluating distance between matching m-bit patterns.",
+    formula: "fn = (1/K) * Sum(log2(dist_i)), P-value = erfc(|fn - expected| / (sqrt(2) * sigma))",
+    interpretation: "Passing means the sequence is non-compressible without algorithmic redundancy."
+  },
+  "Random Excursions": {
+    purpose: "Evaluates the number of visits to specific states during a cumulative sum random walk.",
+    formula: "Chi^2 test on random walk state cycle frequency counts.",
+    interpretation: "Passing means random walk trajectory excursions match theoretical Brownian motion bounds."
+  },
   "Approximate Entropy": {
     purpose: "Compares the frequency of overlapping block patterns of length m and m+1 across the entire sequence.",
     formula: "ApEn = Phi(m) - Phi(m+1), Chi^2 = 2 * n * (ln(2) - ApEn).",
