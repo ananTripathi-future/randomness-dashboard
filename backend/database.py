@@ -3,7 +3,10 @@ import json
 import os
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "randomness_history.db")
+if os.environ.get("VERCEL"):
+    DB_PATH = "/tmp/randomness_history.db"
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), "randomness_history.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
