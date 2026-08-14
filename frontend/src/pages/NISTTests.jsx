@@ -504,9 +504,153 @@ export default function NISTTests() {
           {/* Table */}
           <TestTable tests={nistResults.tests} alpha={alpha} />
 
+          {/* Automated File Failure Diagnosis & Executive Summary */}
+          <div style={{
+            background: nistResults.failed > 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+            borderRadius: '16px',
+            border: nistResults.failed > 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
+            padding: '28px',
+            marginTop: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              {nistResults.failed > 0 ? (
+                <ShieldAlert size={28} color="#f87171" />
+              ) : (
+                <CheckCircle size={28} color="#34d399" />
+              )}
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                  {nistResults.failed > 0 
+                    ? `File Failure Diagnosis Summary (${nistResults.failed} Test Case${nistResults.failed > 1 ? 's' : ''} Failed)`
+                    : 'File Evaluation Summary: 100% Passed All Evaluated Tests!'}
+                </h3>
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '2px' }}>
+                  {nistResults.failed > 0 
+                    ? `Specific statistical defects were detected in your uploaded file at significance level α = ${alpha}. Review the detailed diagnostic breakdown below.`
+                    : `The tested sequence bit distribution in your file shows no statistically significant evidence against the NIST SP 800-22 null hypothesis (α = ${alpha}).`}
+                </div>
+              </div>
+            </div>
+
+            {/* List of Failed Test Cases with Specific Explanations */}
+            {nistResults.failed > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '20px' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fca5a5' }}>
+                  Why Particular Test Cases Failed on Your File:
+                </div>
+                {nistResults.tests.filter(t => t.status === 'FAIL').map((t, idx) => {
+                  const info = getFailureExplanation(t.name, t.p_value, alpha);
+                  return (
+                    <div key={idx} style={{
+                      background: '#090d16',
+                      borderRadius: '10px',
+                      padding: '20px',
+                      border: '1px solid rgba(239, 68, 68, 0.25)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <XCircle size={18} color="#f87171" />
+                          <span>{t.name}</span>
+                        </div>
+                        <div style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>
+                          P-value: {t.p_value} (Threshold α = {alpha})
+                        </div>
+                      </div>
+                      
+                      <div style={{ fontSize: '0.85rem', color: '#cbd5e1', marginBottom: '8px', lineHeight: 1.5 }}>
+                        <strong style={{ color: '#fb7185' }}>Why this test failed on your file:</strong> {info.why}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                        <strong style={{ color: '#38bdf8' }}>Recommended Fix / Action:</strong> {info.remediation}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
         </div>
       )}
 
     </div>
   );
+}
+
+function getFailureExplanation(testName, pValue, alpha) {
+  const map = {
+    "Frequency (Monobit)": {
+      why: "The total count of 1s and 0s in your uploaded file is significantly imbalanced. A P-value below α indicates extreme bit bias.",
+      remediation: "Apply von Neumann unbiasing or SHA-256 / HKDF randomness extraction to eliminate physical bit bias."
+    },
+    "Block Frequency": {
+      why: "While the overall 0/1 ratio might look balanced, localized M-bit sub-blocks in your file contain spatial clusters of 0s or 1s.",
+      remediation: "Check for localized memory drift, burst noise in physical sensors, or thermal fluctuations in hardware."
+    },
+    "Cumulative Sums (Forward)": {
+      why: "The cumulative sum random walk created by your file's bits drifts continuously upwards or downwards beyond standard Wiener process bounds.",
+      remediation: "Eliminate directional offset drift or asymmetric single-photon detector counts."
+    },
+    "Cumulative Sums (Reverse)": {
+      why: "The reverse cumulative sum random walk exceeds standard excursion boundaries.",
+      remediation: "Check for directional asymmetry in bit stream construction from right to left."
+    },
+    "Runs": {
+      why: "The rate of transitions between 0s and 1s (V_obs) occurs too rapidly (e.g. 010101...) or too slowly (e.g. long streaks).",
+      remediation: "Check for high-frequency clock crosstalk, artificial alternating patterns, or low oscillator phase jitter."
+    },
+    "Longest Run of Ones": {
+      why: "The maximum streak of consecutive 1s within M-bit blocks deviates significantly from theoretical probability distributions.",
+      remediation: "Check for photodiode afterpulsing, latching hardware faults, or long memory retention in shift registers."
+    },
+    "Binary Matrix Rank": {
+      why: "Linear dependencies exist among 32x32 binary matrices formed by your file's sub-words over GF(2).",
+      remediation: "Avoid short-period Linear Feedback Shift Registers (LFSR) or repetitive word patterns."
+    },
+    "Discrete Fourier Transform (FFT)": {
+      why: "Your bit stream contains periodic features or repetitive spectral peaks that exceed white noise threshold d.",
+      remediation: "Eliminate power line clock leakage (50/60Hz), periodic algorithmic loops, or unshielded RF interference."
+    },
+    "Non-Overlapping Template Matching": {
+      why: "Target non-periodic m-bit patterns (m=9) occur too frequently or too rarely compared to Poisson expectations.",
+      remediation: "Fix fixed-word state encoding bias or structured dictionary lookup tables."
+    },
+    "Overlapping Template Matching": {
+      why: "Overlapping streaks of 1s form artificial spatial clusters across sub-blocks.",
+      remediation: "Remediate avalanche photodiode breakdown charge accumulation or sensor saturation."
+    },
+    "Maurer's Universal Statistical": {
+      why: "Matching pattern distances indicate that your sequence can be compressed without information loss.",
+      remediation: "Remove algorithmic predictability, structured file headers, or low-entropy static fields."
+    },
+    "Approximate Entropy": {
+      why: "Sub-pattern complexity of length m compared to length m+1 deviates from maximum entropy expectations.",
+      remediation: "Expand state space size or cryptographically hash short deterministic seeds."
+    },
+    "Random Excursions": {
+      why: "The random walk trajectory created by your file visits state +1 or -1 abnormally often.",
+      remediation: "Remediate asymmetric random walk trajectory drift or increase cycle counts."
+    },
+    "Random Excursions Variant": {
+      why: "Specific state visits (x in [-9..+9]) deviate from theoretical Brownian motion bounds.",
+      remediation: "Eliminate state trajectory bias in physical entropy harvesters."
+    },
+    "Serial (Test 1)": {
+      why: "Frequencies of 2^m m-bit overlapping sub-words are non-uniform across your file.",
+      remediation: "Check byte-to-bit endianness conversion or non-uniform LSB bit packaging."
+    },
+    "Serial (Test 2)": {
+      why: "Non-overlapping sub-pattern variance exceeds standard limits.",
+      remediation: "Eliminate higher-order sub-pattern correlation in byte streams."
+    },
+    "Linear Complexity": {
+      why: "Your bit sequence can be generated by a short Linear Feedback Shift Register (LFSR length L < M/2).",
+      remediation: "Do not rely on linear PRNG generators (like LCGs); wrap with cryptographic hashing."
+    }
+  };
+
+  return map[testName] || {
+    why: `The statistical P-value (${pValue}) was below the significance threshold α = ${alpha}, indicating non-random structure.`,
+    remediation: "Inspect bit conversion, file encoding, or physical entropy harvester calibration."
+  };
 }
