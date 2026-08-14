@@ -241,7 +241,34 @@ export default function NISTTests() {
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target.result || '';
-        const cleanBits = text.replace(/[^01]/g, '');
+        let cleanBits = text.replace(/[^01]/g, '');
+        
+        if (cleanBits.length < 100 && selectedFile.size > 0) {
+          const bufferReader = new FileReader();
+          bufferReader.onload = (bufEvent) => {
+            const bytes = new Uint8Array(bufEvent.target.result);
+            let binStr = '';
+            for (let i = 0; i < bytes.length; i++) {
+              binStr += bytes[i].toString(2).padStart(8, '0');
+            }
+            const ones = (binStr.match(/1/g) || []).length;
+            const zeros = binStr.length - ones;
+            setFileStats({
+              fileName: selectedFile.name,
+              fileSizeKB: (selectedFile.size / 1024).toFixed(1),
+              totalChars: selectedFile.size,
+              extractedBitsCount: binStr.length,
+              onesCount: ones,
+              zerosCount: zeros,
+              onesRatio: binStr.length > 0 ? (ones / binStr.length * 100).toFixed(2) : 0,
+              previewText: binStr.substring(0, 450) + (binStr.length > 450 ? '...' : ''),
+              fullBits: binStr
+            });
+          };
+          bufferReader.readAsArrayBuffer(selectedFile);
+          return;
+        }
+
         const ones = (cleanBits.match(/1/g) || []).length;
         const zeros = cleanBits.length - ones;
         
@@ -253,7 +280,8 @@ export default function NISTTests() {
           onesCount: ones,
           zerosCount: zeros,
           onesRatio: cleanBits.length > 0 ? (ones / cleanBits.length * 100).toFixed(2) : 0,
-          previewText: text.substring(0, 450) + (text.length > 450 ? '...' : '')
+          previewText: cleanBits.substring(0, 450) + (cleanBits.length > 450 ? '...' : ''),
+          fullBits: cleanBits
         });
       };
       
@@ -307,8 +335,8 @@ export default function NISTTests() {
     } catch (err) {
       console.warn("Backend API unavailable, executing client-side JS NIST engine fallback:", err.message);
       let bitsToTest = manualBits.replace(/[^01]/g, '');
-      if (activeTab === 'upload' && fileStats) {
-        bitsToTest = fileStats.previewText.replace(/[^01]/g, '');
+      if (activeTab === 'upload' && fileStats && fileStats.fullBits) {
+        bitsToTest = fileStats.fullBits;
       }
       if (bitsToTest.length >= 10) {
         const jsRes = runFullNISTJS(bitsToTest, alpha, selectedTests);

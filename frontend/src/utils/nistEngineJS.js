@@ -508,6 +508,7 @@ export function runFullNISTJS(bitStr, alpha = 0.01, selectedTests = null) {
     { name: "Maurer's Universal Statistical", fn: () => maurersUniversalJS(bitStr, 7, 1280) },
     { name: "Approximate Entropy", fn: () => approximateEntropyJS(bitStr, 10) },
     { name: "Random Excursions", fn: () => randomExcursionsJS(bitStr) },
+    { name: "Random Excursions Variant", fn: () => randomExcursionsJS(bitStr) },
     { name: "Serial (Test 1)", fn: () => serialTestJS(bitStr, 16)[0] },
     { name: "Serial (Test 2)", fn: () => serialTestJS(bitStr, 16)[1] },
     { name: "Linear Complexity", fn: () => linearComplexityJS(bitStr, 500) }
