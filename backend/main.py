@@ -81,8 +81,10 @@ def api_generate_qrng(req: QRNGRequest):
     res = generate_qrng_bits(model=req.model, num_bits=req.num_bits)
     return res
 
+import asyncio
+
 @app.post("/api/nist/run")
-def api_run_nist(req: NISTRunRequest):
+async def api_run_nist(req: NISTRunRequest):
     if not req.bit_str:
         raise HTTPException(status_code=400, detail="bit_str cannot be empty")
         
@@ -90,7 +92,8 @@ def api_run_nist(req: NISTRunRequest):
     if len(clean_bits) < 100:
         raise HTTPException(status_code=400, detail="bit sequence must contain at least 100 valid bits ('0' and '1')")
         
-    nist_res = execute_nist_test_suite(
+    nist_res = await asyncio.to_thread(
+        execute_nist_test_suite,
         bit_str=clean_bits,
         alpha=req.alpha,
         num_sequences=req.num_sequences,
@@ -146,7 +149,8 @@ async def api_upload_file(
     if len(clean_bits) < 100:
         raise HTTPException(status_code=400, detail="Could not extract at least 100 bits from file")
         
-    nist_res = execute_nist_test_suite(
+    nist_res = await asyncio.to_thread(
+        execute_nist_test_suite,
         bit_str=clean_bits,
         alpha=alpha,
         num_sequences=num_sequences,

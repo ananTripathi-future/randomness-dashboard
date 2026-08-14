@@ -4,15 +4,20 @@ from scipy import special, stats
 import re
 
 def monobit_frequency_test(bit_str: str) -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
     n = len(bit_str)
     if n == 0:
         return 0.0
-    sum_val = sum(1 if b == '1' else -1 for b in bit_str)
+    ones = bit_str.count('1')
+    sum_val = ones - (n - ones)
     s_obs = abs(sum_val) / math.sqrt(n)
     p_val = math.erfc(s_obs / math.sqrt(2))
     return p_val
 
 def block_frequency_test(bit_str: str, block_size: int = 128) -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
     n = len(bit_str)
     num_blocks = n // block_size
     if num_blocks == 0:
@@ -29,10 +34,15 @@ def block_frequency_test(bit_str: str, block_size: int = 128) -> float:
     return float(p_val)
 
 def cumulative_sums_test(bit_str: str, mode: str = 'forward') -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
     n = len(bit_str)
     if n == 0:
         return 0.0
-    x = [1 if b == '1' else -1 for b in bit_str]
+    
+    # Vectorized conversion using NumPy
+    arr = np.frombuffer(bit_str.encode('ascii'), dtype=np.uint8)
+    x = np.where(arr == 49, 1, -1)
     if mode == 'reverse':
         x = x[::-1]
     
@@ -62,6 +72,8 @@ def cumulative_sums_test(bit_str: str, mode: str = 'forward') -> float:
     return float(np.clip(p_val, 0.0, 1.0))
 
 def runs_test(bit_str: str) -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
     n = len(bit_str)
     if n == 0:
         return 0.0
@@ -71,10 +83,9 @@ def runs_test(bit_str: str) -> float:
     if abs(pi - 0.5) >= (2.0 / math.sqrt(n)):
         return 0.0
         
-    v_obs = 1
-    for i in range(n - 1):
-        if bit_str[i] != bit_str[i+1]:
-            v_obs += 1
+    # Vectorized run counting using NumPy diff
+    arr = np.frombuffer(bit_str.encode('ascii'), dtype=np.uint8)
+    v_obs = 1 + int(np.count_nonzero(arr[:-1] != arr[1:]))
             
     num = abs(v_obs - 2.0 * n * pi * (1.0 - pi))
     den = 2.0 * math.sqrt(2.0 * n) * pi * (1.0 - pi)
@@ -82,6 +93,8 @@ def runs_test(bit_str: str) -> float:
     return float(p_val)
 
 def longest_run_ones_test(bit_str: str) -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
     n = len(bit_str)
     if n < 128:
         return 0.0
@@ -140,7 +153,8 @@ def longest_run_ones_test(bit_str: str) -> float:
 def matrix_rank_test(bit_str: str, row_size: int = 32, col_size: int = 32) -> float:
     n = len(bit_str)
     matrix_size = row_size * col_size
-    num_matrices = n // matrix_size
+    # Cap evaluated matrices to 1000 max (320,000 bits) for sub-second performance
+    num_matrices = min(n // matrix_size, 1000)
     if num_matrices == 0:
         return 0.0
     
@@ -187,10 +201,13 @@ def matrix_rank_test(bit_str: str, row_size: int = 32, col_size: int = 32) -> fl
     return float(p_val)
 
 def dft_spectral_test(bit_str: str) -> float:
+    # Cap FFT sample length to max 1,000,000 bits for sub-second execution
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
     n = len(bit_str)
     if n == 0:
         return 0.0
-    x = np.array([1 if b == '1' else -1 for b in bit_str])
+    x = np.array([1 if b == '1' else -1 for b in bit_str], dtype=np.int8)
     s = np.abs(np.fft.fft(x))[:n // 2]
     h = 0.95
     t = math.sqrt(math.log(1.0 / (1.0 - h)) * n)
@@ -201,6 +218,9 @@ def dft_spectral_test(bit_str: str) -> float:
     return float(p_val)
 
 def approximate_entropy_test(bit_str: str, m: int = 10) -> float:
+    # Cap sample to 500,000 bits for fast execution
+    if len(bit_str) > 500000:
+        bit_str = bit_str[:500000]
     n = len(bit_str)
     if n < (2**m):
         m = max(2, int(math.log2(n)) - 2)
@@ -225,6 +245,9 @@ def approximate_entropy_test(bit_str: str, m: int = 10) -> float:
     return float(p_val)
 
 def serial_test(bit_str: str, m: int = 16) -> tuple[float, float]:
+    # Cap sample to 500,000 bits for fast execution
+    if len(bit_str) > 500000:
+        bit_str = bit_str[:500000]
     n = len(bit_str)
     if n < (2**m):
         m = max(2, int(math.log2(n)) - 3)
@@ -277,7 +300,8 @@ def berlekamp_massey_lfsr(block: list[int]) -> int:
 
 def linear_complexity_test(bit_str: str, block_size: int = 500) -> float:
     n = len(bit_str)
-    num_blocks = n // block_size
+    # Cap evaluated blocks to 1000 max (500,000 bits) for sub-second execution
+    num_blocks = min(n // block_size, 1000)
     if num_blocks == 0:
         return 0.0
         
