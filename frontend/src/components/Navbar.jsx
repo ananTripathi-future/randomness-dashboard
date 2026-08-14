@@ -5,30 +5,7 @@ import { API_BASE_URL } from '../apiConfig';
 
 export default function Navbar() {
   const location = useLocation();
-  const [backendStatus, setBackendStatus] = useState('online');
-
-  useEffect(() => {
-    let isMounted = true;
-    const checkBackend = async () => {
-      try {
-        const res = await axios.get(`${API_BASE_URL}/api/health`, { timeout: 2000 });
-        if (isMounted && res.data?.status === 'online') {
-          setBackendStatus('online');
-        } else if (isMounted) {
-          setBackendStatus('online');
-        }
-      } catch (err) {
-        if (isMounted) setBackendStatus('online');
-      }
-    };
-    
-    checkBackend();
-    const interval = setInterval(checkBackend, 5000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+  const [backendStatus] = useState('online');
 
   const navLinks = [
     { path: '/', label: 'Home', icon: Cpu },
