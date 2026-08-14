@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Cpu, Binary, Zap, Atom, TestTube, BarChart2, History, BookOpen, Activity } from 'lucide-react';
-import axios from 'axios';
+import { API_BASE_URL } from '../apiConfig';
 
 export default function Navbar() {
   const location = useLocation();
@@ -11,7 +11,7 @@ export default function Navbar() {
     let isMounted = true;
     const checkBackend = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/health', { timeout: 3000 });
+        const res = await axios.get(`${API_BASE_URL}/api/health`, { timeout: 3000 });
         if (isMounted && res.data?.status === 'online') {
           setBackendStatus('online');
         } else if (isMounted) {

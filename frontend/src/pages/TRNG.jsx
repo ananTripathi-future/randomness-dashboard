@@ -4,6 +4,8 @@ import { Zap, Play, RefreshCw, AlertTriangle, TestTube, Activity } from 'lucide-
 import TestTable from '../components/TestTable';
 import { PassFailDonutChart, PValueBarChart } from '../components/Charts';
 
+import { API_BASE_URL } from '../apiConfig';
+
 export default function TRNGPage() {
   const [sourceType, setSourceType] = useState('OS System Entropy');
   const [numBits, setNumBits] = useState(100000);
@@ -16,7 +18,7 @@ export default function TRNGPage() {
     setLoading(true);
     setNistResults(null);
     try {
-      const res = await axios.post('http://localhost:8000/api/generate/trng', {
+      const res = await axios.post(`${API_BASE_URL}/api/generate/trng`, {
         source_type: sourceType,
         num_bits: numBits
       });
@@ -32,7 +34,7 @@ export default function TRNGPage() {
     if (!generatedData?.bits) return;
     setTesting(true);
     try {
-      const res = await axios.post('http://localhost:8000/api/nist/run', {
+      const res = await axios.post(`${API_BASE_URL}/api/nist/run`, {
         bit_str: generatedData.bits,
         alpha: 0.01,
         num_sequences: 1,

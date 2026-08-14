@@ -4,6 +4,8 @@ import { Atom, Play, RefreshCw, AlertCircle, TestTube, Sparkles } from 'lucide-r
 import TestTable from '../components/TestTable';
 import { PassFailDonutChart, PValueBarChart } from '../components/Charts';
 
+import { API_BASE_URL } from '../apiConfig';
+
 export default function QRNGPage() {
   const [model, setModel] = useState('Quantum Beam Splitter');
   const [numBits, setNumBits] = useState(100000);
@@ -16,7 +18,7 @@ export default function QRNGPage() {
     setLoading(true);
     setNistResults(null);
     try {
-      const res = await axios.post('http://localhost:8000/api/generate/qrng', {
+      const res = await axios.post(`${API_BASE_URL}/api/generate/qrng`, {
         model,
         num_bits: numBits
       });
@@ -32,7 +34,7 @@ export default function QRNGPage() {
     if (!generatedData?.bits) return;
     setTesting(true);
     try {
-      const res = await axios.post('http://localhost:8000/api/nist/run', {
+      const res = await axios.post(`${API_BASE_URL}/api/nist/run`, {
         bit_str: generatedData.bits,
         alpha: 0.01,
         num_sequences: 1,

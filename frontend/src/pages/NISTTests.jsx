@@ -4,6 +4,8 @@ import { TestTube, Upload, Play, RefreshCw, FileText, CheckCircle, ShieldAlert, 
 import TestTable from '../components/TestTable';
 import { PassFailDonutChart, PValueBarChart } from '../components/Charts';
 
+import { API_BASE_URL } from '../apiConfig';
+
 const ALL_NIST_TEST_NAMES = [
   "Frequency (Monobit)",
   "Block Frequency",
@@ -117,7 +119,7 @@ export default function NISTTests() {
         formData.append('num_sequences', numSequences);
         formData.append('selected_tests_json', JSON.stringify(selectedTests));
 
-        const res = await axios.post('http://localhost:8000/api/nist/upload', formData, {
+        const res = await axios.post(`${API_BASE_URL}/api/nist/upload`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         setNistResults(res.data);
@@ -127,7 +129,7 @@ export default function NISTTests() {
           setLoading(false);
           return;
         }
-        const res = await axios.post('http://localhost:8000/api/nist/run', {
+        const res = await axios.post(`${API_BASE_URL}/api/nist/run`, {
           bit_str: manualBits,
           alpha: Number(alpha),
           num_sequences: Number(numSequences),

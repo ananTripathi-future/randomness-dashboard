@@ -2,6 +2,16 @@
 
 A full-stack web application designed for random number generation (PRNG, TRNG, QRNG) and statistical randomness evaluation using the **NIST SP 800-22 Rev 1a Statistical Test Suite**.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FananTripathi-future%2Frandomness-dashboard)
+
+---
+
+## 🌟 Live Demo & One-Click Deployment
+
+Deploy directly to **Vercel** with a single click so anyone on GitHub or the web can use the interactive dashboard immediately:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FananTripathi-future%2Frandomness-dashboard)
+
 ---
 
 ## 🌟 Key Features
@@ -28,10 +38,11 @@ A full-stack web application designed for random number generation (PRNG, TRNG, 
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture & Vercel Deployment Structure
 
 ```
 randomness-dashboard/
+├── api/                  # Vercel Serverless Python Function (/api/index.py)
 ├── frontend/             # React + Vite + Recharts + Lucide Icons
 │   ├── src/
 │   │   ├── components/   # Navbar, Footer, TestTable, TestResultModal, Charts
@@ -41,18 +52,19 @@ randomness-dashboard/
 │   └── package.json
 ├── backend/              # Python FastAPI Server
 │   ├── main.py           # REST Endpoints
-│   ├── nist_runner.py    # NIST C STS Executor & Fallback Router
 │   ├── nist_engine_fallback.py # Pure Python NIST SP 800-22 Engine
+│   ├── nist_runner.py    # NIST C STS Executor & Fallback Router
 │   ├── result_parser.py  # NIST C Report Parser
 │   ├── database.py       # SQLite Persistence Layer
 │   ├── generators/       # PRNG, TRNG, QRNG Modules
 │   └── requirements.txt
+├── vercel.json           # Vercel Deployment Configuration
 └── README.md
 ```
 
 ---
 
-## 🚀 Quick Start Guide
+## 🚀 Local Development Guide
 
 ### 1. Start the Backend API
 ```bash

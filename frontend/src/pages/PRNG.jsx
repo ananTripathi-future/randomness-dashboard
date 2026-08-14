@@ -4,6 +4,8 @@ import { Binary, Play, RefreshCw, CheckCircle, ShieldAlert, TestTube } from 'luc
 import TestTable from '../components/TestTable';
 import { PassFailDonutChart, PValueBarChart } from '../components/Charts';
 
+import { API_BASE_URL } from '../apiConfig';
+
 export default function PRNGPage() {
   const [algorithm, setAlgorithm] = useState('Mersenne Twister');
   const [seed, setSeed] = useState(123456);
@@ -21,7 +23,7 @@ export default function PRNGPage() {
     setLoading(true);
     setNistResults(null);
     try {
-      const res = await axios.post('http://localhost:8000/api/generate/prng', {
+      const res = await axios.post(`${API_BASE_URL}/api/generate/prng`, {
         algorithm,
         num_bits: numBits,
         seed: Number(seed)
@@ -38,7 +40,7 @@ export default function PRNGPage() {
     if (!generatedData?.bits) return;
     setTesting(true);
     try {
-      const res = await axios.post('http://localhost:8000/api/nist/run', {
+      const res = await axios.post(`${API_BASE_URL}/api/nist/run`, {
         bit_str: generatedData.bits,
         alpha: 0.01,
         num_sequences: 1,

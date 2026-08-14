@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { BarChart2, Play, RefreshCw, CheckCircle, XCircle, ShieldAlert } from 'lucide-react';
+import { API_BASE_URL } from '../apiConfig';
 
 export default function Compare() {
   const [numBits, setNumBits] = useState(100000);
@@ -11,7 +12,7 @@ export default function Compare() {
   const handleRunComparison = async () => {
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:8000/api/compare/run', {
+      const res = await axios.post(`${API_BASE_URL}/api/compare/run`, {
         num_bits: Number(numBits),
         alpha: 0.01,
         prng_seed: Number(prngSeed)

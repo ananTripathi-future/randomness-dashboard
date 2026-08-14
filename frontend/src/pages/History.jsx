@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { History as HistoryIcon, Download, Eye, RefreshCw, Database } from 'lucide-react';
 import TestTable from '../components/TestTable';
+import { API_BASE_URL } from '../apiConfig';
 
 export default function HistoryPage() {
   const [historyList, setHistoryList] = useState([]);
@@ -12,7 +13,7 @@ export default function HistoryPage() {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:8000/api/history?limit=50');
+      const res = await axios.get(`${API_BASE_URL}/api/history?limit=50`);
       setHistoryList(res.data);
     } catch (err) {
       console.error('Error fetching test history:', err);
@@ -28,7 +29,7 @@ export default function HistoryPage() {
   const handleInspectRun = async (runId) => {
     setLoadingDetail(true);
     try {
-      const res = await axios.get(`http://localhost:8000/api/history/${runId}`);
+      const res = await axios.get(`${API_BASE_URL}/api/history/${runId}`);
       setSelectedRun(res.data);
     } catch (err) {
       alert('Error fetching run detail: ' + err.message);
