@@ -617,6 +617,30 @@ export default function NISTTests() {
       {nistResults && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
+          {/* Scientific Disclaimer & Cryptographic Distinctions Banner */}
+          <div style={{
+            background: 'rgba(30, 41, 59, 0.6)',
+            backdropFilter: 'blur(12px)',
+            borderRadius: '12px',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            padding: '20px 24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#38bdf8', fontWeight: 700, fontSize: '0.95rem', marginBottom: '8px' }}>
+              <Info size={20} />
+              <span>Scientific Distinction: Statistical Randomness Testing vs. Cryptographic Security</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.6 }}>
+              <div style={{ background: '#070a12', padding: '14px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <strong style={{ color: '#f8fafc', display: 'block', marginBottom: '4px' }}>📊 1. Statistical Randomness Testing (NIST SP 800-22)</strong>
+                Evaluates whether this finite bit sequence exhibits statistical properties consistent with the null hypothesis ($H_0$) of a uniform, independent Bernoulli process ($p=0.5$).
+              </div>
+              <div style={{ background: '#070a12', padding: '14px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <strong style={{ color: '#f8fafc', display: 'block', marginBottom: '4px' }}>🔐 2. Cryptographic Security & QRNG Physical Context</strong>
+                Passing NIST tests does <strong>NOT</strong> prove a generator is cryptographically secure. Likewise, a NIST failure on a QRNG does <strong>NOT</strong> automatically prove it is insecure or non-quantum (detector noise, dead-time, or uncalibrated optics can skew statistics without compromising quantum origin).
+              </div>
+            </div>
+          </div>
+
           {/* Execution Engine Notice */}
           <div style={{
             background: nistResults.execution_mode === 'NIST_STS_C_REFERENCE' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.12)',

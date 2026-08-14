@@ -40,6 +40,20 @@ export default function Compare() {
         <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginTop: '6px', maxWidth: '850px' }}>
           Evaluate Pseudorandom (PRNG), Hardware/OS Entropy (TRNG), and Quantum (QRNG) sources side-by-side under identical bitstream parameters against all NIST SP 800-22 tests.
         </p>
+
+        <div style={{
+          background: 'rgba(30, 41, 59, 0.6)',
+          backdropFilter: 'blur(12px)',
+          borderRadius: '12px',
+          border: '1px solid rgba(56, 189, 248, 0.25)',
+          padding: '16px 20px',
+          marginTop: '16px',
+          fontSize: '0.85rem',
+          color: '#94a3b8',
+          lineHeight: 1.5
+        }}>
+          <strong style={{ color: '#38bdf8' }}>NIST STATISTICAL TEST MATRIX (NOT A SECURITY RANKING):</strong> This table measures <strong>statistical bit uniformity (H_0)</strong>. Passing NIST SP 800-22 does <strong>NOT</strong> prove cryptographic un-predictability. Likewise, a test failure on a physical QRNG does <strong>NOT</strong> automatically prove it is non-quantum or insecure (detector dead-time or hardware noise can skew statistics without altering quantum origin).
+        </div>
       </div>
 
       {/* Control Panel */}
