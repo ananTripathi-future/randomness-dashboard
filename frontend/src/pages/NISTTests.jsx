@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { TestTube, Upload, Play, RefreshCw, FileText, CheckCircle, ShieldAlert, XCircle, Cpu, CheckSquare, Square, Layers, Info } from 'lucide-react';
+import { TestTube, Upload, Play, RefreshCw, FileText, CheckCircle, ShieldAlert, XCircle, Cpu, CheckSquare, Square, Layers, Info, Download } from 'lucide-react';
 import TestTable from '../components/TestTable';
 import { PassFailDonutChart, PValueBarChart } from '../components/Charts';
 
@@ -40,6 +40,124 @@ export default function NISTTests() {
   
   const [loading, setLoading] = useState(false);
   const [nistResults, setNistResults] = useState(null);
+
+  const handleDownloadPDF = () => {
+    if (!nistResults) return;
+
+    const printWindow = window.open('', '_blank');
+    const dateStr = new Date().toLocaleString();
+
+    const testRows = nistResults.tests.map((t, idx) => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${idx + 1}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${t.name}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-family: monospace;">${t.p_value}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-family: monospace;">${t.p_uniformity !== undefined ? t.p_uniformity : '-'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+          <span style="padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px; color: ${t.status === 'PASS' ? '#047857' : t.status === 'FAIL' ? '#b91c1c' : '#374151'}; background: ${t.status === 'PASS' ? '#d1fae5' : t.status === 'FAIL' ? '#fee2e2' : '#f3f4f6'};">
+            ${t.status}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+
+    const failedSections = nistResults.tests.filter(t => t.status === 'FAIL').map((t) => {
+      const info = getFailureExplanation(t.name, t.p_value, alpha);
+      return `
+        <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 14px; border-radius: 8px; margin-bottom: 12px;">
+          <div style="font-weight: 700; color: #991b1b; font-size: 14px;">❌ ${t.name} (P-value: ${t.p_value} < Threshold α=${alpha})</div>
+          <div style="font-size: 12px; color: #374151; margin-top: 6px;"><strong>Why It Failed:</strong> ${info.why}</div>
+          <div style="font-size: 12px; color: #1e3a8a; margin-top: 4px;"><strong>Recommended Fix:</strong> ${info.remediation}</div>
+        </div>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>NIST SP 800-22 Evaluation Report</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 35px; color: #0f172a; line-height: 1.5; }
+          .header { text-align: center; border-bottom: 3px solid #0284c7; padding-bottom: 15px; margin-bottom: 25px; }
+          .title { font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
+          .meta { font-size: 12px; color: #64748b; margin-top: 4px; }
+          .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; text-align: center; }
+          .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 10px; }
+          .summary-title { font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 600; }
+          .summary-val { font-size: 22px; font-weight: 800; margin-top: 4px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 13px; }
+          th { background: #0f172a; color: #ffffff; padding: 12px 10px; text-align: left; font-weight: 600; }
+          @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; padding: 14px 20px; border-radius: 10px; border: 1px solid #bae6fd;">
+          <div style="font-weight: 600; color: #0369a1; font-size: 14px;">📄 NIST SP 800-22 Evaluation Report Ready</div>
+          <button onclick="window.print()" style="padding: 10px 22px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
+            🖨️ Save as PDF / Print
+          </button>
+        </div>
+
+        <div class="header">
+          <div class="title">NIST SP 800-22 REV 1A STATISTICAL EVALUATION REPORT</div>
+          <div class="meta">Report Generated: ${dateStr} | Execution Mode: ${nistResults.execution_mode}</div>
+          <div class="meta">Sequence Length: ${nistResults.sequence_length?.toLocaleString()} bits | Sequences: s = ${nistResults.num_sequences || 1} | Significance Level α = ${alpha}</div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-title">Total Tests Evaluated</div>
+            <div class="summary-val" style="color: #0f172a;">${nistResults.total_tests}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-title">Passed Tests</div>
+            <div class="summary-val" style="color: #059669;">${nistResults.passed}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-title">Failed Tests</div>
+            <div class="summary-val" style="color: #dc2626;">${nistResults.failed}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-title">Overall Pass Rate</div>
+            <div class="summary-val" style="color: ${nistResults.pass_rate >= 90 ? '#059669' : '#dc2626'};">${nistResults.pass_rate}%</div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 16px; color: #0f172a; margin-bottom: 12px;">NIST Test Suites Evaluation Breakdown</h3>
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: center; width: 40px;">#</th>
+              <th>NIST Statistical Test Name</th>
+              <th style="text-align: center;">P-Value</th>
+              <th style="text-align: center;">P-Uniformity</th>
+              <th style="text-align: center;">Status Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${testRows}
+          </tbody>
+        </table>
+
+        ${nistResults.failed > 0 ? `
+          <h3 style="font-size: 16px; color: #dc2626; margin-bottom: 12px;">Automated File Failure Diagnosis & Remediation Breakdown</h3>
+          ${failedSections}
+        ` : `
+          <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 18px; border-radius: 8px; color: #065f46; font-size: 13px; font-weight: 500;">
+            <strong>✔ 100% PASS VERDICT:</strong> The tested sequence bit distribution shows no statistically significant evidence against the NIST SP 800-22 uniform randomness null hypothesis at significance level α = ${alpha}.
+          </div>
+        `}
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   // Handle Preset changes
   const handlePresetChange = (p) => {
@@ -454,8 +572,30 @@ export default function NISTTests() {
               </div>
             </div>
 
-            <div style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
-              Sequences Tested: <strong>s = {nistResults.num_sequences || 1}</strong> | Length: <strong>{nistResults.sequence_length?.toLocaleString()} bits</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
+                Sequences Tested: <strong>s = {nistResults.num_sequences || 1}</strong> | Length: <strong>{nistResults.sequence_length?.toLocaleString()} bits</strong>
+              </div>
+              <button
+                onClick={handleDownloadPDF}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
+                }}
+              >
+                <Download size={16} />
+                <span>Download PDF Report</span>
+              </button>
             </div>
           </div>
 
