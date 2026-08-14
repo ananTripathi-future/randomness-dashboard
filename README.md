@@ -4,17 +4,11 @@ A full-stack web application designed for random number generation (PRNG, TRNG, 
 
 ---
 
-## 🌐 Live Web Application
-
-🚀 **Live Website**: **[https://randomness-dashboard.vercel.app/](https://randomness-dashboard.vercel.app/)**
-
----
-
 ## 🌟 Key Features
 
 - **NIST SP 800-22 Statistical Test Suite (16 Test Cases / 15 Suites)**:
   - Frequency (Monobit), Block Frequency, Cumulative Sums (Forward/Reverse), Runs, Longest Run of Ones, Binary Matrix Rank GF(2), Discrete Fourier Transform (Spectral FFT), Non-Overlapping Template, Overlapping Template, Maurer's Universal Statistical, Approximate Entropy, Random Excursions, Serial (Tests 1 & 2), and Linear Complexity (Berlekamp-Massey).
-  - Dual Execution Engines: Primary **Python SciPy Backend** + Standalone **Client-Side Web JS Engine** for 100% cloud uptime.
+  - Primary validation via official **NIST STS C Reference binary** (`assess`), with automatic fallback to a pure Python SciPy statistical engine.
   - Multi-sequence testing ($s$) with **P-value uniformity ($\chi^2$)** test over 10 bins ($p_T = \text{igamc}(9/2, \chi^2/2)$).
   - Standardized significance level **$\alpha = 0.01$**.
 
@@ -34,7 +28,7 @@ A full-stack web application designed for random number generation (PRNG, TRNG, 
 
 ---
 
-## 🏗️ Architecture & Project Structure
+## 🏗️ Architecture & Directory Structure
 
 ```
 randomness-dashboard/
@@ -54,13 +48,12 @@ randomness-dashboard/
 │   ├── database.py       # SQLite Persistence Layer
 │   ├── generators/       # PRNG, TRNG, QRNG Modules
 │   └── requirements.txt
-├── vercel.json           # Vercel SPA Routing Configuration
 └── README.md
 ```
 
 ---
 
-## 🚀 Local Development Guide
+## 🚀 Local Development & Execution Guide
 
 ### 1. Start the Backend API
 ```bash
