@@ -2,22 +2,18 @@
 
 A full-stack web application designed for random number generation (PRNG, TRNG, QRNG) and statistical randomness evaluation using the **NIST SP 800-22 Rev 1a Statistical Test Suite**.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FananTripathi-future%2Frandomness-dashboard)
-
 ---
 
-## 🌐 Live Web Application Links
+## 🌐 Live Web Application
 
-- 🚀 **Live Vercel Application**: **[randomness-dashboard.vercel.app](https://randomness-dashboard.vercel.app/)**
-- ⚡ **Vercel Project Dashboard**: **[vercel.com/omananttripathi-6491s-projects/randomness-dashboard](https://vercel.com/omananttripathi-6491s-projects/randomness-dashboard)**
-- 📦 **GitHub Repository**: **[github.com/ananTripathi-future/randomness-dashboard](https://github.com/ananTripathi-future/randomness-dashboard)**
+🚀 **Live Website**: **[https://randomness-dashboard.vercel.app/](https://randomness-dashboard.vercel.app/)**
 
 ---
 
 ## 🌟 Key Features
 
-- **NIST SP 800-22 Statistical Test Suite (15 Tests)**:
-  - Frequency (Monobit), Block Frequency, Cumulative Sums (Forward/Reverse), Runs, Longest Run of Ones, Binary Matrix Rank GF(2), Discrete Fourier Transform (Spectral FFT), Non-Overlapping Template, Overlapping Template, Universal Statistical, Approximate Entropy, Serial (Tests 1 & 2), and Linear Complexity (Berlekamp-Massey).
+- **NIST SP 800-22 Statistical Test Suite (16 Test Cases / 15 Suites)**:
+  - Frequency (Monobit), Block Frequency, Cumulative Sums (Forward/Reverse), Runs, Longest Run of Ones, Binary Matrix Rank GF(2), Discrete Fourier Transform (Spectral FFT), Non-Overlapping Template, Overlapping Template, Maurer's Universal Statistical, Approximate Entropy, Random Excursions, Serial (Tests 1 & 2), and Linear Complexity (Berlekamp-Massey).
   - Dual Execution Engines: Primary **Python SciPy Backend** + Standalone **Client-Side Web JS Engine** for 100% cloud uptime.
   - Multi-sequence testing ($s$) with **P-value uniformity ($\chi^2$)** test over 10 bins ($p_T = \text{igamc}(9/2, \chi^2/2)$).
   - Standardized significance level **$\alpha = 0.01$**.
@@ -38,11 +34,10 @@ A full-stack web application designed for random number generation (PRNG, TRNG, 
 
 ---
 
-## 🏗️ Architecture & Deployment Structure
+## 🏗️ Architecture & Project Structure
 
 ```
 randomness-dashboard/
-├── api/                  # Vercel Serverless Python Function (/api/index.py)
 ├── frontend/             # React + Vite + Recharts + Lucide Icons
 │   ├── src/
 │   │   ├── components/   # Navbar, Footer, TestTable, TestResultModal, Charts
@@ -59,7 +54,7 @@ randomness-dashboard/
 │   ├── database.py       # SQLite Persistence Layer
 │   ├── generators/       # PRNG, TRNG, QRNG Modules
 │   └── requirements.txt
-├── vercel.json           # Vercel Deployment Configuration
+├── vercel.json           # Vercel SPA Routing Configuration
 └── README.md
 ```
 
