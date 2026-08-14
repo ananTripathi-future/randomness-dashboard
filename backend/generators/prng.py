@@ -89,6 +89,27 @@ def generate_prng_bits(algorithm: str, num_bits: int, seed: int = None) -> dict:
         bit_string = generate_chacha20_bits(seed, num_bits)
         alg_name = "ChaCha20 CSPRNG"
 
+    elif "all_zeros" in alg_lower or "zeros" in alg_lower:
+        bit_string = "0" * num_bits
+        alg_name = "Bad Generator: All Zeros (0000...)"
+
+    elif "all_ones" in alg_lower or "ones" in alg_lower:
+        bit_string = "1" * num_bits
+        alg_name = "Bad Generator: All Ones (1111...)"
+
+    elif "alternating" in alg_lower or "0101" in alg_lower:
+        bit_string = ("01" * ((num_bits + 1) // 2))[:num_bits]
+        alg_name = "Bad Generator: Alternating (010101...)"
+
+    elif "biased" in alg_lower:
+        rng = random.Random(seed)
+        bit_string = "".join("0" if rng.random() < 0.90 else "1" for _ in range(num_bits))
+        alg_name = "Bad Generator: 90% Biased Zeros"
+
+    elif "periodic" in alg_lower:
+        bit_string = ("00001111" * ((num_bits + 7) // 8))[:num_bits]
+        alg_name = "Bad Generator: Periodic (00001111...)"
+
     else:
         rng = random.Random(seed)
         needed_words = (num_bits + 31) // 32

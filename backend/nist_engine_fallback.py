@@ -435,6 +435,24 @@ def random_excursions_test(bit_str: str) -> float:
     chi_sq = ((state1_count - cycles * pi) ** 2) / (cycles * pi)
     return float(special.gammaincc(0.5, chi_sq / 2.0))
 
+def random_excursions_variant_test(bit_str: str) -> float:
+    if len(bit_str) > 1000000:
+        bit_str = bit_str[:1000000]
+    n = len(bit_str)
+    if n == 0: return 0.0
+    
+    x = np.frombuffer(bit_str.encode('ascii'), dtype=np.uint8)
+    vals = np.where(x == 49, 1, -1)
+    s = np.cumsum(vals)
+    
+    J = int(np.count_nonzero(s == 0))
+    if J < 500:
+        return -1.0 # NOT_APPLICABLE code
+        
+    count_pos1 = int(np.count_nonzero(s == 1))
+    p_val = special.erfc(abs(count_pos1 - J) / math.sqrt(2 * J * (4 * 1 - 2)))
+    return float(p_val)
+
 def compute_pvalue_uniformity(p_values: list[float]) -> tuple[float, list[int]]:
     """NIST SP 800-22 Chi-Square test for P-value uniformity over 10 bins."""
     s = len(p_values)
@@ -443,8 +461,9 @@ def compute_pvalue_uniformity(p_values: list[float]) -> tuple[float, list[int]]:
         
     bins = [0] * 10
     for p in p_values:
-        idx = min(9, int(p * 10))
-        bins[idx] += 1
+        if p >= 0:
+            idx = min(9, int(p * 10))
+            bins[idx] += 1
         
     exp_freq = s / 10.0
     chi_sq = sum(((b - exp_freq) ** 2) / exp_freq for b in bins)
@@ -476,6 +495,7 @@ def run_python_fallback_nist_suite(bit_str: str, alpha: float = 0.01, num_sequen
         ("Maurer's Universal Statistical", lambda s: maurers_universal_test(s, 7, 1280)),
         ("Approximate Entropy", lambda s: approximate_entropy_test(s, 10)),
         ("Random Excursions", random_excursions_test),
+        ("Random Excursions Variant", random_excursions_variant_test),
         ("Serial (Test 1)", lambda s: serial_test(s, 16)[0]),
         ("Serial (Test 2)", lambda s: serial_test(s, 16)[1]),
         ("Linear Complexity", lambda s: linear_complexity_test(s, 500)),
@@ -503,9 +523,11 @@ def run_python_fallback_nist_suite(bit_str: str, alpha: float = 0.01, num_sequen
                 p_vals.append(0.0)
                 
         passes = [p for p in p_vals if p >= alpha]
-        pass_ratio = len(passes) / num_sequences
-        
-        if num_sequences > 1:
+        if p_vals[0] < 0:
+            status = "NOT_APPLICABLE"
+            p_uniformity = 0.0
+            bin_counts = [0] * 10
+        elif num_sequences > 1:
             p_uniformity, bin_counts = compute_pvalue_uniformity(p_vals)
             status = "PASS" if (pass_ratio >= min_pass_prop and p_uniformity >= 0.0001) else "FAIL"
         else:
@@ -513,9 +535,10 @@ def run_python_fallback_nist_suite(bit_str: str, alpha: float = 0.01, num_sequen
             bin_counts = [1 if min(9, int(p_vals[0] * 10)) == i else 0 for i in range(10)]
             status = "PASS" if p_vals[0] >= alpha else "FAIL"
 
-        total_tests_run += 1
-        if status == "PASS":
-            passed_tests_count += 1
+        if status != "NOT_APPLICABLE":
+            total_tests_run += 1
+            if status == "PASS":
+                passed_tests_count += 1
 
         results.append({
             "name": name,

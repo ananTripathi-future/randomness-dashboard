@@ -1,0 +1,305 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+import { ShieldAlert, AlertTriangle, Play, RefreshCw, CheckCircle, XCircle, HelpCircle, BookOpen, Layers, Zap } from 'lucide-react';
+import { API_BASE_URL } from '../apiConfig';
+import TestTable from '../components/TestTable';
+import { PassFailDonutChart, PValueBarChart } from '../components/Charts';
+import { runFullNISTJS } from '../utils/nistEngineJS';
+
+const FAILURE_DOCUMENTATION = [
+  {
+    name: "Frequency (Monobit)",
+    condition: "P-value < 0.01 (when |S_obs| > 2.576)",
+    whyFails: "Fails when the total count of 1s and 0s is significantly imbalanced (e.g., 90% 0s and 10% 1s).",
+    cause: "Physical hardware detector efficiency bias, uncalibrated optical splitters, or improper byte-to-bit conversion."
+  },
+  {
+    name: "Block Frequency",
+    condition: "P-value < 0.01 (when M-bit sub-block Chi-Square > threshold)",
+    whyFails: "Fails when bits are globally balanced but locally clustered into sub-block pockets of 0s or 1s.",
+    cause: "Localized memory drift, thermal heating cycles, or burst noise in entropy harvesters."
+  },
+  {
+    name: "Cumulative Sums (Forward & Reverse)",
+    condition: "P-value < 0.01 (when random walk Z = max|S_k| exceeds Wiener bounds)",
+    whyFails: "Fails when cumulative sum random walk drifts continuously upwards or downwards.",
+    cause: "Directional bias, cumulative offset drift, or asymmetric single-photon detection rates."
+  },
+  {
+    name: "Runs",
+    condition: "P-value < 0.01 (when V_obs deviates from 2*n*pi*(1-pi))",
+    whyFails: "Fails when transitions between 0s and 1s occur too rapidly (010101...) or too slowly (00001111...).",
+    cause: "High-frequency clock crosstalk, artificial alternating patterns, or low oscillator phase jitter."
+  },
+  {
+    name: "Longest Run of Ones",
+    condition: "P-value < 0.01 (when maximum 1s streak Chi-Square deviates from expectation)",
+    whyFails: "Fails when long streaks of consecutive 1s occur more or less frequently than theoretical probabilities.",
+    cause: "Latching hardware faults, photodiode afterpulsing, or long memory retention in shift registers."
+  },
+  {
+    name: "Binary Matrix Rank",
+    condition: "P-value < 0.01 (when 32x32 matrix rank distribution deviates over GF(2))",
+    whyFails: "Fails when linear dependencies exist among fixed M-bit sub-words.",
+    cause: "Short period linear feedback shift registers (LFSR) or repetitive word patterns."
+  },
+  {
+    name: "Discrete Fourier Transform (FFT)",
+    condition: "P-value < 0.01 (when spectral peak count exceeds threshold d)",
+    whyFails: "Fails when periodic features or repeating signal patterns exist in the bit stream.",
+    cause: "Power line interference (50/60Hz clock leak), periodic algorithmic loops, or unshielded RF pickup."
+  },
+  {
+    name: "Non-Overlapping Template Matching",
+    condition: "P-value < 0.01 (when target m-bit sub-pattern counts deviate from Poisson expectation)",
+    whyFails: "Fails when specific non-periodic patterns occur too often or too rarely.",
+    cause: "Fixed-word state encoding bias or structured dictionary lookup tables."
+  },
+  {
+    name: "Overlapping Template Matching",
+    condition: "P-value < 0.01 (when overlapping streaks of 1s form spatial clusters)",
+    whyFails: "Fails when consecutive 1-streaks form dense spatial clusters across blocks.",
+    cause: "Avalanche photodiode breakdown charge accumulation."
+  },
+  {
+    name: "Maurer's Universal Statistical",
+    condition: "P-value < 0.01 (when pattern matching distance fn deviates from 6.0506 for L=7)",
+    whyFails: "Fails when the sequence can be compressed without loss.",
+    cause: "Algorithmic predictability, structured data headers, or low entropy source."
+  },
+  {
+    name: "Approximate Entropy",
+    condition: "P-value < 0.01 (when ApEn = Phi(m) - Phi(m+1) deviates from random entropy)",
+    whyFails: "Fails when sub-pattern frequency of length m is regular compared to length m+1.",
+    cause: "Short state space, deterministic PRNG algorithm failure, or static seed repeating."
+  },
+  {
+    name: "Random Excursions & Variant",
+    condition: "P-value < 0.01 (when random walk state cycle visits deviate from Brownian motion)",
+    whyFails: "Fails when random walk trajectory visits state +1 or -1 abnormally often.",
+    cause: "Asymmetric walk drift or insufficient cycle count (J < 500 triggers NOT_APPLICABLE)."
+  },
+  {
+    name: "Serial (Tests 1 & 2)",
+    condition: "P-value < 0.01 (when 2^m overlapping pattern distribution is non-uniform)",
+    whyFails: "Fails when 16-bit sub-words exhibit non-uniform frequency or correlation.",
+    cause: "Byte-to-bit endianness mismatch or non-uniform LSB distribution."
+  },
+  {
+    name: "Linear Complexity",
+    condition: "P-value < 0.01 (when Berlekamp-Massey LFSR length L < M/2)",
+    whyFails: "Fails when sequence can be generated by a small Linear Feedback Shift Register.",
+    cause: "Linear PRNG algorithms (LCGs, short LFSRs) without cryptographic hashing."
+  }
+];
+
+export default function FailureAnalysis() {
+  const [selectedGenerator, setSelectedGenerator] = useState('all_zeros');
+  const [numBits, setNumBits] = useState(100000);
+  const [loading, setLoading] = useState(false);
+  const [nistResults, setNistResults] = useState(null);
+
+  const generatorOptions = [
+    { value: 'all_zeros', label: 'Bad Generator 1: All Zeros (00000000...)', desc: '100% 0s - Severe Frequency & Cusum Failure' },
+    { value: 'all_ones', label: 'Bad Generator 2: All Ones (11111111...)', desc: '100% 1s - Severe Monobit & Runs Failure' },
+    { value: 'alternating', label: 'Bad Generator 3: Alternating (01010101...)', desc: 'Balanced 0/1 ratio, but 100% Runs & FFT Spectral Failure' },
+    { value: 'biased_90_10', label: 'Bad Generator 4: Biased (90% 0s / 10% 1s)', desc: 'Imbalanced ratio - Fails Frequency, Cusum, & Entropy' },
+    { value: 'periodic_00001111', label: 'Bad Generator 5: Periodic (00001111...)', desc: 'Structured periodic 8-bit blocks - Fails Rank, FFT, & Serial' }
+  ];
+
+  const handleRunTest = async () => {
+    setLoading(true);
+    setNistResults(null);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/generate/prng`, {
+        algorithm: selectedGenerator,
+        num_bits: Number(numBits),
+        seed: 12345
+      });
+      const generatedBits = res.data.bits;
+
+      try {
+        const nistRes = await axios.post(`${API_BASE_URL}/api/nist/run`, {
+          bit_str: generatedBits,
+          alpha: 0.01,
+          num_sequences: 1,
+          source_type: 'Bad Generator Test',
+          algorithm_or_source: res.data.algorithm
+        });
+        setNistResults(nistRes.data);
+      } catch (err) {
+        // Client JS engine fallback
+        const jsRes = runFullNISTJS(generatedBits, 0.01);
+        setNistResults(jsRes);
+      }
+    } catch (err) {
+      alert('Error generating bad bit stream: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '40px 24px' }}>
+      
+      {/* Header */}
+      <div style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#f43f5e', fontSize: '0.9rem', fontWeight: 600, marginBottom: '6px' }}>
+          <ShieldAlert size={20} />
+          <span>FAILURE DIAGNOSIS & WHY TESTS FAIL</span>
+        </div>
+        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#f8fafc', margin: 0, letterSpacing: '-0.5px' }}>
+          Why Randomness Tests Fail: Scientific Guide & Live Diagnostics
+        </h1>
+        <p style={{ color: '#94a3b8', fontSize: '1rem', marginTop: '8px', maxWidth: '850px', lineHeight: 1.6 }}>
+          Statistical randomness tests evaluate bit distributions against null hypotheses ($H_0$). When a generator fails a test, it exposes specific architectural or physical defects in the sequence. Use this interactive laboratory to test bad generators and inspect failure mechanics.
+        </p>
+      </div>
+
+      {/* Interactive Bad Generator Tester */}
+      <div style={{
+        background: 'rgba(15, 23, 42, 0.6)',
+        backdropFilter: 'blur(16px)',
+        borderRadius: '16px',
+        border: '1px solid rgba(244, 63, 94, 0.25)',
+        padding: '28px',
+        marginBottom: '40px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#fb7185', fontWeight: 700, fontSize: '1.1rem', marginBottom: '20px' }}>
+          <AlertTriangle size={22} />
+          <span>Interactive Bad Generator Testing Laboratory</span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600, marginBottom: '8px' }}>
+              Select Intentionally Bad Generator:
+            </label>
+            <select
+              value={selectedGenerator}
+              onChange={(e) => setSelectedGenerator(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '10px',
+                background: '#090d16',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#f8fafc',
+                fontSize: '0.9rem'
+              }}
+            >
+              {generatorOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '6px' }}>
+              {generatorOptions.find(o => o.value === selectedGenerator)?.desc}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600, marginBottom: '8px' }}>
+              Bit Length ($n$):
+            </label>
+            <input
+              type="number"
+              value={numBits}
+              onChange={(e) => setNumBits(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '10px',
+                background: '#090d16',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#f8fafc',
+                fontSize: '0.9rem'
+              }}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={handleRunTest}
+          disabled={loading}
+          style={{
+            padding: '14px 28px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
+            color: '#ffffff',
+            border: 'none',
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            boxShadow: '0 4px 14px rgba(225, 29, 72, 0.3)'
+          }}
+        >
+          {loading ? <RefreshCw className="animate-spin" size={18} /> : <Play size={18} />}
+          <span>{loading ? 'Evaluating Bad Generator...' : 'Execute Analysis on Bad Generator'}</span>
+        </button>
+      </div>
+
+      {/* Live Results Section */}
+      {nistResults && (
+        <div style={{ marginBottom: '48px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ background: '#0f172a', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase' }}>Total Tests Evaluated</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f8fafc', marginTop: '4px' }}>{nistResults.total_tests}</div>
+            </div>
+            <div style={{ background: '#0f172a', padding: '20px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#34d399', textTransform: 'uppercase' }}>Passed Tests</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>{nistResults.passed}</div>
+            </div>
+            <div style={{ background: '#0f172a', padding: '20px', borderRadius: '12px', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#fb7185', textTransform: 'uppercase' }}>Failed Tests</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fb7185', marginTop: '4px' }}>{nistResults.failed}</div>
+            </div>
+          </div>
+
+          <TestTable tests={nistResults.tests} alpha={nistResults.alpha} />
+        </div>
+      )}
+
+      {/* Comprehensive Failure Documentation Cards */}
+      <div>
+        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <BookOpen size={22} color="#38bdf8" />
+          <span>Scientific Guide: Why Each NIST Test Fails & How to Fix It</span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
+          {FAILURE_DOCUMENTATION.map((item, idx) => (
+            <div key={idx} style={{
+              background: '#0f172a',
+              borderRadius: '12px',
+              padding: '24px',
+              border: '1px solid rgba(255, 255, 255, 0.08)'
+            }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc', marginBottom: '8px' }}>
+                {idx + 1}. {item.name}
+              </div>
+              
+              <div style={{ background: 'rgba(244, 63, 94, 0.1)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.8rem', color: '#fb7185', fontWeight: 600, marginBottom: '12px' }}>
+                Failure Condition: {item.condition}
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600, textTransform: 'uppercase' }}>Why It Fails:</div>
+                <div style={{ fontSize: '0.85rem', color: '#cbd5e1', marginTop: '2px', lineHeight: 1.5 }}>{item.whyFails}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>Common Physical / Code Cause:</div>
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '2px', lineHeight: 1.5 }}>{item.cause}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+}

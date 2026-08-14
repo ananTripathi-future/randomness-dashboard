@@ -11,6 +11,7 @@ import NISTTests from './pages/NISTTests';
 import Compare from './pages/Compare';
 import HistoryPage from './pages/History';
 import Educational from './pages/Educational';
+import FailureAnalysis from './pages/FailureAnalysis';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/nist" element={<NISTTests />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/history" element={<HistoryPage />} />
+            <Route path="/failures" element={<FailureAnalysis />} />
             <Route path="/about" element={<Educational />} />
           </Routes>
         </main>
