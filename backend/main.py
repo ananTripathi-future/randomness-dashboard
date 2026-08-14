@@ -238,5 +238,61 @@ def api_get_history(limit: int = 50):
 def api_get_history_detail(run_id: int):
     record = database.get_test_run_by_id(run_id)
     if not record:
-        raise HTTPException(status_code=404, detail="Test run not found")
+        raise HTTPException(status_code=404, detail="Run ID not found")
     return record
+
+from security_simulator import generate_otp_from_source, generate_nonce_hex, run_controlled_otp_experiment
+
+class OTPAnalysisRequest(BaseModel):
+    source: str = "ChaCha20"
+    count: int = 100000
+    seed: int = 42
+
+class BankingTxRequest(BaseModel):
+    account_name: str = "ANANT"
+    recipient_account: str = "XYZ-987"
+    amount: float = 5000.0
+    source: str = "ChaCha20"
+
+class DefenceCmdRequest(BaseModel):
+    sender: str = "COMMAND"
+    receiver: str = "DRONE-07"
+    message: str = "MOVE TO SECTOR B"
+    source: str = "ChaCha20"
+
+@app.post("/api/simulator/otp_analysis")
+def api_otp_analysis(req: OTPAnalysisRequest):
+    return run_controlled_otp_experiment(source=req.source, count=req.count, seed=req.seed)
+
+@app.post("/api/simulator/banking_tx")
+def api_banking_tx(req: BankingTxRequest):
+    otp = generate_otp_from_source(req.source)
+    session_id = f"SESS-{generate_nonce_hex(req.source, 8).upper()}"
+    nonce = generate_nonce_hex(req.source, 12)
+    return {
+        "account_name": req.account_name,
+        "recipient": req.recipient_account,
+        "amount": req.amount,
+        "source": req.source,
+        "otp": otp,
+        "session_id": session_id,
+        "transaction_nonce": nonce,
+        "status": "OTP_GENERATED_PENDING_VERIFICATION"
+    }
+
+@app.post("/api/simulator/defence_cmd")
+def api_defence_cmd(req: DefenceCmdRequest):
+    session_key = generate_nonce_hex(req.source, 16).upper() # 128-bit key
+    gcm_nonce = generate_nonce_hex(req.source, 12).upper()   # 96-bit AES-GCM nonce
+    ciphertext = f"ENC[{hashlib.sha256((req.message + gcm_nonce).encode()).hexdigest()[:24].upper()}]"
+    
+    return {
+        "sender": req.sender,
+        "receiver": req.receiver,
+        "message": req.message,
+        "source": req.source,
+        "session_key": session_key,
+        "gcm_nonce": gcm_nonce,
+        "encrypted_payload": ciphertext,
+        "status": "ENCRYPTED_COMMAND_TRANSMITTED"
+    }

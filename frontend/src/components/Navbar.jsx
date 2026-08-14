@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Cpu, Binary, Zap, Atom, TestTube, BarChart2, History, BookOpen, Activity, ShieldAlert } from 'lucide-react';
+import { Cpu, Binary, Zap, Atom, TestTube, BarChart2, History, BookOpen, Activity, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../apiConfig';
 
 export default function Navbar() {
@@ -13,6 +13,7 @@ export default function Navbar() {
     { path: '/trng', label: 'TRNG', icon: Zap },
     { path: '/qrng', label: 'QRNG', icon: Atom },
     { path: '/nist', label: 'NIST Suite', icon: TestTube },
+    { path: '/simulator', label: 'Security Lab', icon: ShieldCheck },
     { path: '/compare', label: 'Compare', icon: BarChart2 },
     { path: '/failures', label: 'Why Tests Fail', icon: ShieldAlert },
     { path: '/history', label: 'History', icon: History },
