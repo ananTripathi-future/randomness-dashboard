@@ -391,7 +391,7 @@ def maurers_universal_test(bit_str: str, L: int = 7, Q: int = 1280) -> float:
     n = len(bit_str)
     K = (n // L) - Q
     if K <= 0:
-        return 0.5
+        return -1.0 # NOT_APPLICABLE
     
     table = {}
     for i in range(1, Q + 1):
@@ -404,17 +404,22 @@ def maurers_universal_test(bit_str: str, L: int = 7, Q: int = 1280) -> float:
         last_pos = table.get(block, 0)
         dist = i - last_pos
         table[block] = i
-        sum_log += math.log2(dist) if dist > 0 else 0
+        sum_log += math.log2(dist)
         
     fn = sum_log / K
-    expected_value = 6.0506
-    variance = 3.125
+    expected_values = {6: 5.2177052, 7: 6.0506306, 8: 6.8647464, 9: 7.6653241, 10: 8.4554316}
+    variances = {6: 2.954, 7: 3.125, 8: 3.238, 9: 3.311, 10: 3.356}
+    
+    exp_val = expected_values.get(L, 6.0506306)
+    var_val = variances.get(L, 3.125)
+    
     c = 0.7 - 0.8 / L + (4.0 + 32.0 / L) * (K ** (-3.0 / L)) / 15.0
-    sigma = c * math.sqrt(variance / K)
+    sigma = c * math.sqrt(var_val / K)
     if sigma <= 0: return 0.5
     
-    val = abs(fn - expected_value) / (math.sqrt(2.0) * sigma)
-    return float(special.erfc(val))
+    val = abs(fn - exp_val) / (math.sqrt(2.0) * sigma)
+    p_val = float(special.erfc(val))
+    return Math.max(0.0, Math.min(1.0, p_val)) if 'Math' in globals() else max(0.0, min(1.0, p_val))
 
 def random_excursions_test(bit_str: str) -> float:
     if len(bit_str) > 1000000:
@@ -427,8 +432,8 @@ def random_excursions_test(bit_str: str) -> float:
     s = np.cumsum(vals)
     
     cycles = int(np.count_nonzero(s == 0))
-    if cycles == 0:
-        return 1.0
+    if cycles < 500:
+        return -1.0 # NOT_APPLICABLE if cycle count < 500 under NIST SP 800-22 recommendation
         
     state1_count = int(np.count_nonzero(s == 1))
     pi = 0.5
@@ -523,6 +528,7 @@ def run_python_fallback_nist_suite(bit_str: str, alpha: float = 0.01, num_sequen
                 p_vals.append(0.0)
                 
         passes = [p for p in p_vals if p >= alpha]
+        pass_ratio = len(passes) / num_sequences
         if p_vals[0] < 0:
             status = "NOT_APPLICABLE"
             p_uniformity = 0.0
